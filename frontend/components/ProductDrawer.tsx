@@ -304,17 +304,23 @@ export function ProductDrawer({
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="absolute inset-0 bg-ink/25 backdrop-blur-[1px]" onClick={onClose} />
       <aside className="relative flex h-full w-full max-w-[1100px] flex-col bg-surface shadow-2xl">
-        <header className="flex items-center gap-3 border-b border-line px-5 py-3">
-          <ProductThumb src={src.photo} alt={src.name} className="size-10" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
+        <header className="flex items-center gap-2.5 border-b border-line px-4 py-3 sm:gap-3 sm:px-5">
+          {/* На самых узких экранах миниатюра уступает место артикулу и названию */}
+          <ProductThumb src={src.photo} alt={src.name} className="size-10 max-[359px]:hidden" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 whitespace-nowrap">
               <span className="text-[11px] text-ink-3">{src.sku || `строка ${product.row_index + 1}`}</span>
               <StatusBadge status={product.status} />
-              {product.edited && <span className="text-[11px] text-ink-3">изменено вручную</span>}
+              {product.edited && (
+                <span className="text-[11px] text-ink-3">
+                  <span className="sm:hidden">правка</span>
+                  <span className="hidden sm:inline">изменено вручную</span>
+                </span>
+              )}
             </div>
             <h2 className="truncate font-semibold">{src.name}</h2>
           </div>
-          <div className="ml-auto flex items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0.5">
             <Button variant="ghost" size="sm" title="Предыдущий (←)" disabled={!onPrev} onClick={onPrev} icon={<ChevronLeft className="size-4" />} />
             <Button variant="ghost" size="sm" title="Следующий (→)" disabled={!onNext} onClick={onNext} icon={<ChevronRight className="size-4" />} />
             <Button variant="ghost" size="sm" title="Закрыть (Esc)" onClick={onClose} icon={<X className="size-4" />} />
@@ -453,26 +459,29 @@ export function ProductDrawer({
                         {draft.attributes.map((a, i) => {
                           const flagged = attrTerms.some((t) => `${a.name} ${a.value}`.toLowerCase().includes(t));
                           return (
-                            <div key={i} className={`group flex items-center ${flagged ? "bg-warn-soft/60" : ""}`}>
-                              <input
-                                value={a.name}
-                                aria-label="Название характеристики"
-                                onChange={(e) =>
-                                  update({ attributes: draft.attributes.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })
-                                }
-                                className="w-2/5 border-r border-line bg-transparent px-3 py-1.5 text-sm text-ink-2 focus:bg-surface focus:outline-none"
-                              />
-                              <input
-                                value={a.value}
-                                aria-label="Значение характеристики"
-                                onChange={(e) =>
-                                  update({ attributes: draft.attributes.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) })
-                                }
-                                className="flex-1 bg-transparent px-3 py-1.5 text-sm focus:bg-surface focus:outline-none"
-                              />
+                            <div key={i} className={`group flex ${flagged ? "bg-warn-soft/60" : ""}`}>
+                              {/* На телефоне название поля — подпись над значением, на десктопе — колонка слева */}
+                              <div className="flex min-w-0 flex-1 flex-col sm:flex-row">
+                                <input
+                                  value={a.name}
+                                  aria-label="Название характеристики"
+                                  onChange={(e) =>
+                                    update({ attributes: draft.attributes.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })
+                                  }
+                                  className="w-full min-w-0 bg-transparent px-3 pt-2 pb-0 text-xs text-ink-3 focus:bg-surface focus:outline-none sm:w-2/5 sm:border-r sm:border-line sm:py-1.5 sm:text-sm sm:text-ink-2"
+                                />
+                                <input
+                                  value={a.value}
+                                  aria-label="Значение характеристики"
+                                  onChange={(e) =>
+                                    update({ attributes: draft.attributes.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) })
+                                  }
+                                  className="w-full min-w-0 flex-1 bg-transparent px-3 pt-0.5 pb-2 text-sm focus:bg-surface focus:outline-none sm:py-1.5"
+                                />
+                              </div>
                               <button
                                 onClick={() => update({ attributes: draft.attributes.filter((_, j) => j !== i) })}
-                                className="px-2.5 text-ink-3 opacity-0 transition group-hover:opacity-100 hover:text-danger focus:opacity-100"
+                                className="px-2.5 text-ink-3 transition hover:text-danger focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                                 aria-label="Удалить характеристику"
                               >
                                 <X className="size-3.5" />

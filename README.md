@@ -93,7 +93,7 @@ flowchart LR
 
 - Регистрации нет: фронтенд создаёт анонимный `visitor_id` в `localStorage`, у каждого посетителя свои партии и своя копия демо.
 - API и воркер собираются из одного образа, воркер запускается командой `arq app.worker.WorkerSettings`.
-- На Vercel воркера нет — очередь продвигается опросами партии (`QUEUE_MODE=poll`), подробнее в разделе «Деплой».
+- Демо развёрнуто на Vercel, где нет постоянного процесса для воркера. Там включается режим `QUEUE_MODE=poll`: каждый опрос партии фронтендом обрабатывает следующие 5 строк, строки захватываются через `SELECT … FOR UPDATE SKIP LOCKED`, а брошенные возвращаются в очередь.
 
 ## Стек
 
@@ -149,58 +149,6 @@ cd backend
 uv run pytest
 uv run ruff check app tests
 ```
-
-## Деплой
-
-Демо развёрнуто целиком на Vercel: два проекта из одного репозитория плюс бесплатные Neon (PostgreSQL) и Upstash (Redis) из Vercel Marketplace.
-
-```mermaid
-flowchart LR
-    U[Браузер] --> F[cardforge<br/>Next.js]
-    U -->|REST| A[cardforge-api<br/>FastAPI, Vercel Function]
-    A --> P[(Neon<br/>PostgreSQL)]
-    A --> R[(Upstash<br/>Redis)]
-    C[Vercel Cron] -->|раз в сутки| A
-```
-
-**Очередь без воркера.** В serverless нет постоянного процесса, поэтому воркер arq на Vercel не запускается. Вместо него включается режим `QUEUE_MODE=poll`: строки ждут в статусе «в очереди», а каждый опрос партии фронтендом (раз в 2 секунды) обрабатывает следующие 5 строк. Строки захватываются через `SELECT … FOR UPDATE SKIP LOCKED`, так что параллельные опросы не делают двойную работу; брошенные оборвавшимся вызовом строки возвращаются в очередь. На VPS с Docker Compose работает обычный воркер arq.
-
-### 1. API
-
-1. Vercel → **Add New → Project** → импортировать репозиторий. Имя — `cardforge-api`, **Root Directory** — `backend`. Пресет FastAPI определится сам: точка входа задана в `pyproject.toml` (`[tool.vercel] entrypoint = "app.main:app"`).
-2. Во вкладке **Storage** проекта создать и подключить:
-   - **Neon** (Postgres), регион Frankfurt — появятся `DATABASE_URL` и `DATABASE_URL_UNPOOLED`;
-   - **Upstash for Redis**, регион Frankfurt — появятся `KV_URL` / `REDIS_URL`.
-
-   Ничего переименовывать не нужно: бэкенд сам берёт эти переменные и приводит строку Neon к драйверу asyncpg.
-3. **Settings → Environment Variables**:
-
-   | Переменная | Значение |
-   | --- | --- |
-   | `CRON_SECRET` | случайная строка — Vercel Cron передаёт её в `Authorization` |
-   | `CORS_ORIGINS` | адрес фронтенда, например `https://cardforge-weld.vercel.app` |
-   | `CORS_ORIGIN_REGEX` | необязательно, для превью: `^https://cardforge-weld-.*\.vercel\.app$` |
-   | `LLM_PROVIDER` | `mock`, позже — `openai` или `yandex` с ключами |
-
-4. Deploy и проверить `https://cardforge-api.vercel.app/api/health` → `{"ok": true}`.
-
-`backend/vercel.json` задаёт регион функций `fra1` (рядом с базой), лимит 60 секунд на запрос и ночную очистку `/api/cron/cleanup` в 03:00 UTC.
-
-### 2. Фронтенд
-
-1. Ещё раз **Add New → Project** с тем же репозиторием. Имя — `cardforge`, **Root Directory** — `frontend`, пресет Next.js.
-2. Переменные окружения:
-
-   | Переменная | Значение |
-   | --- | --- |
-   | `NEXT_PUBLIC_API_URL` | `https://cardforge-api.vercel.app` |
-   | `NEXT_PUBLIC_SITE_URL` | необязательно: по умолчанию берётся адрес продакшена Vercel |
-
-3. Deploy. Переменные `NEXT_PUBLIC_*` вшиваются в код при сборке: после их изменения нужен Redeploy. Если адрес фронтенда отличается от указанного в `CORS_ORIGINS` у API — поправить там и сделать Redeploy API.
-
-### Альтернатива: VPS
-
-`docker compose up -d --build` поднимает весь стек с воркером arq. Для HTTPS перед API достаточно Caddy или nginx; в `CORS_ORIGINS` — домен фронтенда.
 
 ## Структура
 

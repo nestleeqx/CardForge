@@ -94,7 +94,7 @@ function GeneratingCard({ index, stage }: { index: number; stage: Stage }) {
         )}
       </div>
 
-      <div className="grid gap-5 p-5 sm:grid-cols-[180px_minmax(0,1fr)]">
+      <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-4 p-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-5 sm:p-5">
         <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-sunken">
           {/* eslint-disable-next-line @next/next/no-img-element -- фото товара с CDN */}
           <img
@@ -106,7 +106,7 @@ function GeneratingCard({ index, stage }: { index: number; stage: Stage }) {
         </div>
         <div className="min-w-0">
           <p className="text-xs font-medium text-accent">{p.brand}</p>
-          <p className="mt-1 min-h-[3.4em] text-lg leading-snug font-semibold">
+          <p className="mt-1 min-h-[3.4em] text-[15px] leading-snug font-semibold sm:text-lg">
             {stage.typed === 0 ? (
               <span className="block space-y-2 pt-1">
                 <span className="skeleton block h-4 w-full rounded" />
@@ -123,9 +123,9 @@ function GeneratingCard({ index, stage }: { index: number; stage: Stage }) {
             {p.attributes.map(([k, v], i) =>
               i < stage.attrs ? (
                 <div key={`${p.sku}-${k}`} className="slide-in flex items-baseline gap-2">
-                  <dt className="shrink-0 text-ink-3">{k}</dt>
+                  <dt className="min-w-0 truncate text-ink-3">{k}</dt>
                   <span className="min-w-3 flex-1 border-b border-dotted border-line-strong" />
-                  <dd className="text-right text-ink-2">{v}</dd>
+                  <dd className="shrink-0 text-right text-ink-2">{v}</dd>
                 </div>
               ) : (
                 <div key={`${p.sku}-${k}`} className="skeleton h-3.5 rounded" style={{ width: `${70 + ((i * 13) % 30)}%` }} />
@@ -233,7 +233,8 @@ export function HeroStage({ children }: { children: ReactNode }) {
       {children}
 
       <div className="relative px-4">
-        <div className="relative mx-auto mt-16 h-[480px] max-w-5xl sm:h-[540px]">
+        {/* На телефоне макет обрезается по высоте и уходит в градиент, а не наезжает на следующий блок */}
+        <div className="relative mx-auto mt-12 h-[440px] max-w-5xl overflow-hidden sm:mt-16 sm:h-[540px] sm:overflow-visible">
           <div className="absolute top-14 left-0 hidden w-[430px] md:block" style={parallax(14)}>
             <div className="-rotate-6 rounded-xl border border-line bg-surface shadow-[0_20px_40px_-24px_rgba(23,25,28,.3)]">
               <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2.5 text-xs text-ink-2">
