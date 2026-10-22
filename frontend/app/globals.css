@@ -125,8 +125,10 @@ mark.hl-danger {
   animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
+/* Лента товаров едет медленно (~25 px/с), чтобы не рябило в глазах */
 .marquee {
-  animation: marquee 60s linear infinite;
+  animation: marquee 110s linear infinite;
+  will-change: transform;
 }
 
 .marquee:hover {
@@ -141,9 +143,13 @@ mark.hl-danger {
 
 @media (prefers-reduced-motion: reduce) {
   .float-card,
-  .rise,
-  .marquee {
+  .rise {
     animation: none;
+  }
+
+  /* Ленту не останавливаем совсем — только замедляем ещё сильнее */
+  .marquee {
+    animation-duration: 200s;
   }
 }
 

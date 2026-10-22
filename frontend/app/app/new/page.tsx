@@ -12,6 +12,15 @@ import type { Length, Marketplace, Preview, SourceField, Tone } from "@/lib/type
 
 const STEPS = ["Файл", "Колонки", "Настройки"];
 
+const EMPTY_MAPPING: Record<SourceField, string | null> = {
+  sku: null,
+  name: null,
+  category: null,
+  brand: null,
+  attributes: null,
+  photo: null,
+};
+
 function Stepper({ step }: { step: number }) {
   return (
     <ol className="flex items-center gap-1.5 text-sm sm:gap-2">
@@ -72,14 +81,7 @@ export default function NewBatchPage() {
   const [parsing, setParsing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [mapping, setMapping] = useState<Record<SourceField, string | null>>({
-    sku: null,
-    name: null,
-    category: null,
-    brand: null,
-    attributes: null,
-    photo: null,
-  });
+  const [mapping, setMapping] = useState<Record<SourceField, string | null>>(EMPTY_MAPPING);
   const [extra, setExtra] = useState(true);
   const [marketplace, setMarketplace] = useState<Marketplace>("ozon");
   const [tone, setTone] = useState<Tone>("selling");
@@ -114,8 +116,15 @@ export default function NewBatchPage() {
         extra_as_attributes: extra,
       });
       router.push(`/app/batches/${batch.id}`);
+      // Next.js не размонтирует страницу при переходе, а прячет её вместе с состоянием.
+      // Отправленную форму сбрасываем, чтобы «Новая партия» снова открывалась с первого шага.
+      setStep(0);
+      setPreview(null);
+      setMapping(EMPTY_MAPPING);
+      setExtra(true);
     } catch (e) {
       toast.error(e);
+    } finally {
       setCreating(false);
     }
   }

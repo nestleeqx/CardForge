@@ -544,9 +544,11 @@ export function ProductDrawer({
           )}
         </div>
 
-        <footer className="flex flex-wrap items-center gap-2 border-t border-line bg-surface px-5 py-3">
+        {/* На телефоне: без правок — одна широкая кнопка; с правками — подпись и «Отменить / Сохранить» поровну */}
+        <footer className="flex flex-wrap items-center gap-2 border-t border-line bg-surface px-4 py-3 sm:px-5">
           <Button
             variant="secondary"
+            className={dirty ? "max-sm:hidden" : "max-sm:w-full"}
             loading={retrying}
             disabled={product.status === "queued" || product.status === "running"}
             onClick={retry}
@@ -556,9 +558,10 @@ export function ProductDrawer({
           </Button>
           {dirty ? (
             <>
-              <span className="ml-auto text-xs text-ink-3">Есть несохранённые правки</span>
+              <span className="w-full text-center text-xs text-ink-3 sm:ml-auto sm:w-auto">Есть несохранённые правки</span>
               <Button
                 variant="ghost"
+                className="max-sm:flex-1"
                 onClick={() => {
                   setDraft(toDraft(product.result));
                   setDirty(false);
@@ -567,7 +570,13 @@ export function ProductDrawer({
               >
                 Отменить
               </Button>
-              <Button variant="primary" loading={saving} onClick={save} icon={<Save className="size-4" />}>
+              <Button
+                variant="primary"
+                className="max-sm:flex-1"
+                loading={saving}
+                onClick={save}
+                icon={<Save className="size-4" />}
+              >
                 Сохранить
               </Button>
             </>

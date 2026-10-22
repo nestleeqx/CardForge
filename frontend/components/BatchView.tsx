@@ -43,13 +43,35 @@ function Checks({ product }: { product: Product }) {
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+function Stat({
+  label,
+  shortLabel,
+  value,
+  hint,
+  wideHint,
+}: {
+  label: string;
+  shortLabel?: string;
+  value: string | number;
+  hint?: string;
+  wideHint?: boolean;
+}) {
   return (
-    <div className="px-4 py-3">
-      <p className="text-xs text-ink-3">{label}</p>
+    <div className="bg-surface px-4 py-3">
+      <p className="truncate text-xs text-ink-3">
+        {shortLabel ? (
+          <>
+            <span className="sm:hidden">{shortLabel}</span>
+            <span className="hidden sm:inline">{label}</span>
+          </>
+        ) : (
+          label
+        )}
+      </p>
       <p className="mt-0.5 text-lg font-semibold tracking-tight tabular-nums">
         {value}
-        {hint && <span className="ml-1 text-xs font-normal text-ink-3">{hint}</span>}
+        {/* Длинные подсказки на телефоне не помещаются в половину ширины — показываем их с sm */}
+        {hint && <span className={`ml-1 text-xs font-normal text-ink-3 ${wideHint ? "hidden sm:inline" : ""}`}>{hint}</span>}
       </p>
     </div>
   );
@@ -169,14 +191,25 @@ export function BatchView() {
       </div>
 
       <Panel className="overflow-hidden">
-        <div className="grid grid-cols-2 divide-line md:grid-cols-4 md:divide-x">
+        {/* Сетка с волосяными линиями: 2×2 на телефоне, 4 в ряд на десктопе */}
+        <div className="grid grid-cols-2 gap-px bg-line md:grid-cols-4">
           <Stat label="Готово карточек" value={`${batch.counts.done} из ${batch.total}`} />
-          <Stat label="С замечаниями" value={withWarnings} hint={withWarnings ? "проверьте вручную" : undefined} />
-          <Stat label="Средняя длина названия" value={avg((p) => p.result!.title.length)} hint={`из ${titleMax}`} />
-          <Stat label="Средняя длина описания" value={avg((p) => p.result!.description.length)} hint="символов" />
+          <Stat label="С замечаниями" value={withWarnings} hint={withWarnings ? "проверьте вручную" : undefined} wideHint />
+          <Stat
+            label="Средняя длина названия"
+            shortLabel="Длина названия"
+            value={avg((p) => p.result!.title.length)}
+            hint={`из ${titleMax}`}
+          />
+          <Stat
+            label="Средняя длина описания"
+            shortLabel="Длина описания"
+            value={avg((p) => p.result!.description.length)}
+            hint="символов"
+          />
         </div>
         <div className="border-t border-line px-4 py-3">
-          <div className="mb-2 flex items-center justify-between text-xs text-ink-2">
+          <div className="mb-2 flex flex-col gap-0.5 text-xs text-ink-2 sm:flex-row sm:items-center sm:justify-between">
             <span className="flex items-center gap-1.5">
               {active && <Loader2 className="size-3.5 animate-spin text-info" />}
               {active ? `Генерация идёт: ${processed} из ${batch.total}` : "Генерация завершена"}
