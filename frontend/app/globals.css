@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: #f6f7fb;
+  color: #0f172a;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200px 0;
+  }
+  to {
+    background-position: 200px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #eef0f5 0px, #f7f8fb 80px, #eef0f5 160px);
+  background-size: 400px 100%;
+  animation: shimmer 1.2s linear infinite;
+}

@@ -1,0 +1,130 @@
+import io
+
+from openpyxl import load_workbook
+
+from app.services.demo import DEMO_CSV
+from tests.conftest import drain
+
+
+async def _upload(client, content: bytes, name: str = "goods.csv"):
+    return await client.post("/api/uploads/preview", files={"file": (name, content, "text/csv")})
+
+
+async def _create(client, preview: dict, **settings):
+    body = {
+        "filename": preview["filename"],
+        "mapping": preview["suggested_mapping"],
+        "rows": preview["rows"],
+        "marketplace": "wb",
+        "tone": "neutral",
+        "length": "short",
+        **settings,
+    }
+    return await client.post("/api/batches", json=body)
+
+
+async def test_demo_batch_is_ready_on_first_visit(client):
+    resp = await client.get("/api/batches")
+    assert resp.status_code == 200
+    [demo] = resp.json()
+    assert demo["is_demo"] and demo["total"] == 30
+    await drain()
+    batch = (await client.get(f"/api/batches/{demo['id']}")).json()
+    assert batch["counts"]["done"] == 30
+
+
+async def test_visitors_do_not_see_each_other(client):
+    await client.get("/api/batches")
+    other = await client.get("/api/batches", headers={"X-Visitor-Id": "someone-else-02"})
+    mine = await client.get("/api/batches")
+    assert other.json()[0]["id"] != mine.json()[0]["id"]
+    resp = await client.get(
+        f"/api/batches/{mine.json()[0]['id']}", headers={"X-Visitor-Id": "someone-else-02"}
+    )
+    assert resp.status_code == 404
+
+
+async def test_full_flow_upload_generate_edit_export(client):
+    preview = (await _upload(client, DEMO_CSV.read_bytes())).json()
+    assert preview["suggested_mapping"]["name"] == "Название"
+    assert preview["suggested_mapping"]["attributes"] == "Характеристики"
+    assert len(preview["rows"]) == 30
+
+    resp = await _create(client, preview)
+    assert resp.status_code == 201, resp.text
+    batch = resp.json()
+    await drain()
+    batch = (await client.get(f"/api/batches/{batch['id']}")).json()
+    assert batch["counts"]["done"] == 30
+
+    product = batch["products"][0]
+    assert len(product["result"]["title"]) <= 60  # лимит WB
+
+    resp = await client.patch(
+        f"/api/products/{product['id']}", json={"title": "Плед " + "очень длинный " * 6}
+    )
+    edited = resp.json()
+    assert edited["edited"]
+    assert any(w["code"] == "too_long" and w["field"] == "title" for w in edited["warnings"])
+
+    resp = await client.post(
+        f"/api/products/{product['id']}/regenerate", json={"field": "title", "comment": "короче"}
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()["result"]["title"]) <= 60
+
+    resp = await client.get(f"/api/batches/{batch['id']}/export")
+    assert resp.status_code == 200
+    wb = load_workbook(io.BytesIO(resp.content))
+    ws = wb["Карточки"]
+    assert ws.cell(1, 1).value == "Артикул продавца"
+    assert ws.max_row == 31
+    assert ws.cell(2, 2).value == "Текстиль"  # кириллица на месте
+
+
+async def test_retry_failed_rows(client):
+    preview = (await _upload(client, DEMO_CSV.read_bytes())).json()
+    batch = (await _create(client, preview)).json()
+    await drain()
+
+    from app.db import SessionLocal
+    from app.models import Product
+
+    async with SessionLocal() as s:
+        p = await s.get(Product, batch["products"][3]["id"])
+        p.status, p.error = "error", "Таймаут модели"
+        await s.commit()
+
+    resp = await client.post(f"/api/batches/{batch['id']}/retry-failed")
+    assert resp.json()["counts"]["error"] == 0
+    await drain()
+    batch = (await client.get(f"/api/batches/{batch['id']}")).json()
+    assert batch["counts"]["done"] == 30
+
+
+async def test_limits(client):
+    many = "Артикул,Название\n" + "\n".join(f"A{i},Товар {i}" for i in range(51))
+    resp = await _upload(client, many.encode())
+    assert resp.status_code == 422
+    assert "50" in resp.json()["detail"]
+
+    preview = (await _upload(client, "Артикул,Название\nA1,Кружка\n".encode())).json()
+    for _ in range(3):
+        assert (await _create(client, preview)).status_code == 201
+    resp = await _create(client, preview)
+    assert resp.status_code == 429
+    assert "Retry-After" in resp.headers
+
+
+async def test_demo_reset_restores_original(client):
+    [demo] = (await client.get("/api/batches")).json()
+    await drain()
+    batch = (await client.get(f"/api/batches/{demo['id']}")).json()
+    pid = batch["products"][0]["id"]
+    await client.patch(f"/api/products/{pid}", json={"title": "Испорчено"})
+
+    resp = await client.post("/api/demo/reset")
+    assert resp.status_code == 200
+    await drain()
+    batches = (await client.get("/api/batches")).json()
+    assert len(batches) == 1 and batches[0]["id"] != demo["id"]
