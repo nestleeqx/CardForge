@@ -14,9 +14,9 @@ const STEPS = ["Файл", "Колонки", "Настройки"];
 
 function Stepper({ step }: { step: number }) {
   return (
-    <ol className="flex items-center gap-2 text-sm">
+    <ol className="flex items-center gap-1.5 text-sm sm:gap-2">
       {STEPS.map((label, i) => (
-        <li key={label} className="flex items-center gap-2">
+        <li key={label} className="flex items-center gap-1.5 sm:gap-2">
           <span
             className={`grid size-6 place-items-center rounded-full text-xs font-semibold ${
               i <= step ? "bg-ink text-white" : "bg-sunken text-ink-3"
@@ -24,8 +24,8 @@ function Stepper({ step }: { step: number }) {
           >
             {i + 1}
           </span>
-          <span className={i === step ? "font-medium" : "text-ink-3"}>{label}</span>
-          {i < STEPS.length - 1 && <span className="mx-1 h-px w-8 bg-line-strong" />}
+          <span className={i === step ? "font-medium" : "hidden text-ink-3 sm:inline"}>{label}</span>
+          {i < STEPS.length - 1 && <span className="mx-0.5 h-px w-4 bg-line-strong sm:mx-1 sm:w-8" />}
         </li>
       ))}
     </ol>
@@ -135,7 +135,7 @@ export default function NewBatchPage() {
       </div>
 
       {step === 0 && (
-        <Panel className="p-6">
+        <Panel className="p-4 sm:p-6">
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -149,7 +149,7 @@ export default function NewBatchPage() {
               if (file) handleFile(file);
             }}
             onClick={() => input.current?.click()}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-14 text-center transition ${
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-10 text-center transition sm:px-6 sm:py-14 ${
               dragging ? "border-accent bg-accent-soft" : "border-line-strong hover:border-accent hover:bg-canvas"
             }`}
           >
@@ -183,8 +183,9 @@ export default function NewBatchPage() {
           <div className="mt-4 flex justify-center">
             <Button
               variant="ghost"
+              className="h-auto py-2 text-center whitespace-normal!"
               onClick={() => api.downloadSample().catch(toast.error)}
-              icon={<Download className="size-4" />}
+              icon={<Download className="size-4 shrink-0" />}
             >
               Скачать пример — 30 товаров «Уютного угла»
             </Button>
@@ -193,7 +194,7 @@ export default function NewBatchPage() {
       )}
 
       {step === 1 && preview && (
-        <Panel className="space-y-6 p-6">
+        <Panel className="space-y-6 p-4 sm:p-6">
           <div>
             <h2 className="font-semibold">Сопоставьте колонки</h2>
             <p className="text-sm text-ink-3">
@@ -264,7 +265,7 @@ export default function NewBatchPage() {
             </table>
           </div>
 
-          <div className="flex justify-between">
+          <div className="flex flex-wrap justify-between gap-2">
             <Button variant="ghost" onClick={() => setStep(0)} icon={<ArrowLeft className="size-4" />}>
               Другой файл
             </Button>
@@ -276,7 +277,7 @@ export default function NewBatchPage() {
       )}
 
       {step === 2 && preview && (
-        <Panel className="space-y-6 p-6">
+        <Panel className="space-y-6 p-4 sm:p-6">
           <section className="space-y-2">
             <h2 className="font-semibold">Маркетплейс</h2>
             <Segmented
@@ -296,18 +297,23 @@ export default function NewBatchPage() {
             <h2 className="font-semibold">Длина описания</h2>
             <Segmented value={length} onChange={setLength} options={LENGTHS} />
           </section>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-accent-soft/60 p-4 text-sm">
+          <div className="flex flex-col gap-3 rounded-xl bg-accent-soft/60 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
             <span>
               Будет сгенерировано карточек: <b>{rowsWithName}</b>
               {rowsWithName < preview.rows.length && (
                 <span className="text-ink-3"> (строки без названия пропущены)</span>
               )}
             </span>
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button variant="ghost" onClick={() => setStep(1)} icon={<ArrowLeft className="size-4" />}>
                 Назад
               </Button>
-              <Button variant="primary" loading={creating} onClick={start} icon={<Sparkles className="size-4" />}>
+              <Button
+                variant="primary"
+                loading={creating}
+                onClick={start}
+                icon={<Sparkles className="size-4" />}
+              >
                 Запустить генерацию
               </Button>
             </div>
