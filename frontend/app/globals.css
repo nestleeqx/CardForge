@@ -37,6 +37,12 @@
   color-scheme: light;
 }
 
+/* Место под полосу прокрутки резервируется всегда: когда редактор карточки
+   блокирует прокрутку страницы, разметка не сдвигается */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--color-canvas);
   color: var(--color-ink);

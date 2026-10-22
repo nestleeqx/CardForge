@@ -227,7 +227,7 @@ export default function NewBatchPage() {
 
           {extraCols.length > 0 && (
             <label className="flex items-start gap-2 rounded-xl bg-canvas p-3 text-sm">
-              <input type="checkbox" checked={extra} onChange={(e) => setExtra(e.target.checked)} className="mt-0.5" />
+              <input type="checkbox" checked={extra} onChange={(e) => setExtra(e.target.checked)} className="mt-0.5 accent-ink" />
               <span>
                 Добавить остальные колонки в характеристики:{" "}
                 <span className="text-ink-3">{extraCols.join(", ")}</span>

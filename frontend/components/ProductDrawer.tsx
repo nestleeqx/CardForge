@@ -233,10 +233,12 @@ export function ProductDrawer({
 
   // Страница под открытой панелью не прокручивается
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Блокируем на <html>: там же зарезервировано место под полосу прокрутки, и разметка не прыгает
+    const root = document.documentElement;
+    const prev = root.style.overflow;
+    root.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = prev;
+      root.style.overflow = prev;
     };
   }, []);
 

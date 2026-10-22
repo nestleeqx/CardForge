@@ -24,6 +24,25 @@ function issues(p: Product) {
   return p.warnings.filter((w) => w.code !== "missing_data" && w.code !== "model_note");
 }
 
+function Checks({ product }: { product: Product }) {
+  const problems = issues(product);
+  const notes = product.warnings.length - problems.length;
+  return (
+    <div className="flex flex-wrap gap-1" title={product.warnings.map((w) => w.message).join("\n")}>
+      {problems.length > 0 && (
+        <Chip tone="warn">
+          <AlertTriangle className="size-3" />
+          {problems.length}
+        </Chip>
+      )}
+      {notes > 0 && <Chip>заметок: {notes}</Chip>}
+      {product.result && product.warnings.length === 0 && (
+        <span className="text-xs whitespace-nowrap text-ink-3">без замечаний</span>
+      )}
+    </div>
+  );
+}
+
 function Stat({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
     <div className="px-4 py-3">
@@ -191,18 +210,51 @@ export function BatchView() {
               </button>
             ))}
           </div>
-          <label className="relative ml-auto">
+          <label className="relative w-full sm:ml-auto sm:w-auto">
             <Search className="absolute top-2 left-2.5 size-4 text-ink-3" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Артикул или название"
-              className="h-8 w-60 rounded-lg border border-line bg-surface pr-3 pl-8 text-sm placeholder:text-ink-3 focus:border-accent focus:outline-none"
+              className="h-8 w-full rounded-lg border sm:w-60 border-line bg-surface pr-3 pl-8 text-sm placeholder:text-ink-3 focus:border-accent focus:outline-none"
             />
           </label>
         </div>
 
-        <div className="overflow-x-auto scrollbar-thin">
+        {/* На телефоне — список карточек вместо широкой таблицы */}
+        <ul className="divide-y divide-line md:hidden">
+          {products.map((p) => (
+            <li key={p.id}>
+              <button
+                onClick={() => setOpenId(p.id)}
+                className="flex w-full gap-3 px-4 py-3 text-left transition-colors active:bg-canvas"
+              >
+                <ProductThumb src={p.source.photo} alt={p.source.name} className="size-14" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="truncate text-sm font-medium">{p.source.name}</span>
+                    <StatusBadge status={p.status} />
+                  </div>
+                  <div className="truncate font-mono text-[11px] text-ink-3">
+                    {p.source.sku || `#${p.row_index + 1}`} · {p.source.brand || "без бренда"}
+                  </div>
+                  {p.result ? (
+                    <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-ink-2">{p.result.title}</p>
+                  ) : p.status === "error" ? (
+                    <p className="mt-1 text-xs text-danger">{p.error}</p>
+                  ) : (
+                    <div className="skeleton mt-2 h-3.5 w-4/5 rounded" />
+                  )}
+                  <div className="mt-1.5">
+                    <Checks product={p} />
+                  </div>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <div className="hidden overflow-x-auto scrollbar-thin md:block">
           <table className="w-full min-w-[960px] text-left text-sm">
             <thead className="text-xs text-ink-3">
               <tr className="border-b border-line">
@@ -218,8 +270,6 @@ export function BatchView() {
               {products.map((p) => {
                 const r = p.result;
                 const titleOver = r && r.title.length > titleMax;
-                const problems = issues(p);
-                const notes = p.warnings.length - problems.length;
                 return (
                   <tr
                     key={p.id}
@@ -264,16 +314,7 @@ export function BatchView() {
                       {r?.keywords.length ?? "—"}
                     </td>
                     <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-1" title={p.warnings.map((w) => w.message).join("\n")}>
-                        {problems.length > 0 && (
-                          <Chip tone="warn">
-                            <AlertTriangle className="size-3" />
-                            {problems.length}
-                          </Chip>
-                        )}
-                        {notes > 0 && <Chip>заметок: {notes}</Chip>}
-                        {r && p.warnings.length === 0 && <span className="text-xs whitespace-nowrap text-ink-3">без замечаний</span>}
-                      </div>
+                      <Checks product={p} />
                     </td>
                     <td className="py-3 pr-4 pl-3">
                       <StatusBadge status={p.status} />
@@ -284,8 +325,8 @@ export function BatchView() {
               })}
             </tbody>
           </table>
-          {products.length === 0 && <p className="p-8 text-center text-sm text-ink-3">Ничего не найдено</p>}
         </div>
+        {products.length === 0 && <p className="p-8 text-center text-sm text-ink-3">Ничего не найдено</p>}
       </Panel>
 
       {openProduct && (

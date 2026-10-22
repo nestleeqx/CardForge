@@ -15,30 +15,34 @@ from app.llm.base import LLMProvider
 from app.schemas import Attribute, SourceProduct
 from app.services.rules import LENGTH_RANGES, RULES
 
+# Тексты нейтральны к категории: шаблон работает и для дома, и для спорта, и для электроники
 _TONE_OPENERS = {
-    "neutral": "{name} от {brand} предназначен для повседневного использования дома.",
-    "selling": "{name} от {brand} — простой способ сделать дом уютнее и удобнее каждый день.",
-    "premium": "{name} {brand}. Вещь, в которой продумана каждая деталь.",
+    "neutral": "{title}: основные характеристики и особенности модели.",
+    "selling": "{title} — практичный выбор для тех, кто ценит удобство в мелочах.",
+    "premium": "{title}. Продуманные детали и аккуратное исполнение.",
 }
 
 _TONE_CLOSERS = {
     "neutral": "Перед покупкой сверьте размеры и характеристики с вашими задачами.",
-    "selling": (
-        "Добавьте товар в корзину, чтобы обновить интерьер без лишних хлопот, "
-        "или выберите его в подарок близким."
-    ),
-    "premium": "Сдержанный дизайн, внимание к деталям и уверенность в каждом дне.",
+    "selling": "Добавьте товар в корзину — он пригодится каждый день и станет хорошим подарком.",
+    "premium": "Сдержанный дизайн и внимание к деталям — для тех, кто выбирает осознанно.",
 }
 
 _FILLERS = [
-    "Товар легко вписывается в разные интерьеры и сочетается с привычными вещами в доме.",
     "Модель удобна в использовании и не требует сложного ухода.",
-    "Подойдёт как для собственного дома, так и в качестве подарка на новоселье.",
-    "Все параметры указаны в характеристиках карточки — так проще подобрать нужный вариант.",
-    "Аккуратный внешний вид сохраняется при регулярном использовании, если соблюдать "
-    "рекомендации по уходу.",
-    "Такая вещь помогает организовать пространство и сделать повседневные дела приятнее.",
+    "Все параметры указаны в характеристиках карточки — так проще подобрать подходящий вариант.",
+    "Товар подойдёт для ежедневного использования и в качестве подарка.",
+    "Аккуратный внешний вид сохраняется надолго, если соблюдать рекомендации производителя.",
+    "Описание составлено по данным производителя, без лишних обещаний.",
 ]
+
+
+def _lower_first(value: str) -> str:
+    """«Материал TPE» → «материал TPE», но аббревиатуры вроде «TPE» и «USB» не трогаем."""
+    value = value.strip()
+    if len(value) > 1 and value[:2].isupper():
+        return value
+    return value[:1].lower() + value[1:]
 
 
 def _parse_data(user: str) -> dict[str, Any]:
@@ -63,7 +67,10 @@ def _title(p: SourceProduct, max_len: int) -> str:
     if p.brand and p.brand.lower() not in base.lower():
         base = f"{base} {p.brand}"
     for a in p.attributes[:2]:
-        candidate = f"{base}, {a.value.strip().lower()}"
+        # Голое число без единиц («700» из колонки «Вес, г») в названии ничего не говорит
+        if re.fullmatch(r"[\d\s.,]+", a.value):
+            continue
+        candidate = f"{base}, {_lower_first(a.value)}"
         if len(candidate) <= max_len:
             base = candidate
     return base[:max_len].rstrip(" ,")
@@ -73,8 +80,8 @@ def _description(p: SourceProduct, tone: str, length: str, comment: str) -> str:
     lo, hi = LENGTH_RANGES[length]  # type: ignore[index]
     if "короч" in comment.lower():
         lo, hi = max(500, lo - 300), max(800, hi - 400)
-    brand = p.brand or "проверенного производителя"
-    opener = _TONE_OPENERS.get(tone, _TONE_OPENERS["neutral"]).format(name=p.name, brand=brand)
+    title = f"{p.name} {p.brand}" if p.brand else p.name
+    opener = _TONE_OPENERS.get(tone, _TONE_OPENERS["neutral"]).format(title=title)
     facts = [f"{a.name.capitalize()}: {a.value.strip()}." for a in p.attributes]
     paragraphs = [opener, " ".join(facts)] if facts else [opener]
     text = "\n\n".join(paragraphs)
@@ -93,13 +100,13 @@ def _keywords(p: SourceProduct) -> list[str]:
     category = p.category.lower().strip()
     words = name.split()
     head = words[0] if words else name
-    candidates = [name, category, f"{name} купить", f"{head} для дома", f"{category} для дома"]
+    candidates = [name, category, f"{name} купить", f"{name} недорого", f"{category} купить"]
     candidates += [
-        f"{head} {a.value.lower()}"
+        f"{head} {_lower_first(a.value)}"
         for a in p.attributes[:6]
         if not re.search(r"\d", a.value) and len(a.value.split()) <= 2
     ]
-    candidates += [f"{name} в подарок", f"{head} недорого", f"{category} купить"]
+    candidates += [f"{name} в подарок", f"{head} с доставкой", f"{category} недорого"]
     if p.brand:
         candidates.append(f"{p.brand.lower()} {head}")
     out: list[str] = []
@@ -107,7 +114,7 @@ def _keywords(p: SourceProduct) -> list[str]:
         c = re.sub(r"\s+", " ", c).strip()
         if c and c not in out and len(c.split()) <= 5:
             out.append(c)
-    fallback = ["товары для дома", "уют дома", "подарок на новоселье", "для интерьера"]
+    fallback = [f"{head} в наличии", f"{name} отзывы", f"{head} оригинал", f"{category} новинки"]
     for c in fallback:
         if len(out) >= 12:
             break
