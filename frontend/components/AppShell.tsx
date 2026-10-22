@@ -63,7 +63,7 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
                 }`}
               />
               <span className="min-w-0 flex-1 truncate">{b.is_demo ? "Демо: Уютный угол" : b.filename}</span>
-              <span className="font-mono text-[11px] text-ink-3 tabular-nums">
+              <span className="text-[11px] text-ink-3 tabular-nums">
                 {b.counts.done}/{b.total}
               </span>
             </Link>
@@ -80,7 +80,7 @@ function Meter({ label, left, total }: { label: string; left: number; total: num
     <div>
       <div className="flex justify-between text-[11px] text-ink-3">
         <span>{label}</span>
-        <span className="font-mono tabular-nums">
+        <span className="tabular-nums">
           {left}/{total}
         </span>
       </div>

@@ -181,7 +181,7 @@ export function BatchView() {
               {active && <Loader2 className="size-3.5 animate-spin text-info" />}
               {active ? `Генерация идёт: ${processed} из ${batch.total}` : "Генерация завершена"}
             </span>
-            <span className="font-mono text-ink-3 tabular-nums">
+            <span className="text-ink-3 tabular-nums">
               в очереди {batch.counts.queued} · в работе {batch.counts.running} · ошибок {batch.counts.error}
             </span>
           </div>
@@ -206,7 +206,7 @@ export function BatchView() {
                   filter === key ? "bg-surface font-medium text-ink shadow-sm" : "text-ink-2 hover:text-ink"
                 }`}
               >
-                {label} <span className="font-mono text-[11px] text-ink-3">{count}</span>
+                {label} <span className="text-[11px] text-ink-3">{count}</span>
               </button>
             ))}
           </div>
@@ -235,7 +235,7 @@ export function BatchView() {
                     <span className="truncate text-sm font-medium">{p.source.name}</span>
                     <StatusBadge status={p.status} />
                   </div>
-                  <div className="truncate font-mono text-[11px] text-ink-3">
+                  <div className="truncate text-[11px] text-ink-3">
                     {p.source.sku || `#${p.row_index + 1}`} · {p.source.brand || "без бренда"}
                   </div>
                   {p.result ? (
@@ -281,7 +281,7 @@ export function BatchView() {
                         <ProductThumb src={p.source.photo} alt={p.source.name} className="size-11" />
                         <div className="min-w-0">
                           <div className="truncate font-medium">{p.source.name}</div>
-                          <div className="truncate font-mono text-[11px] text-ink-3">
+                          <div className="truncate text-[11px] text-ink-3">
                             {p.source.sku || `#${p.row_index + 1}`} · {p.source.brand || "без бренда"}
                           </div>
                         </div>
@@ -292,7 +292,7 @@ export function BatchView() {
                         <>
                           <div className="line-clamp-2 leading-snug">{r.title}</div>
                           <div
-                            className={`mt-0.5 font-mono text-[11px] tabular-nums ${titleOver ? "font-semibold text-danger" : "text-ink-3"}`}
+                            className={`mt-0.5 text-[11px] tabular-nums ${titleOver ? "font-semibold text-danger" : "text-ink-3"}`}
                           >
                             {r.title.length}/{titleMax}
                           </div>
@@ -310,7 +310,7 @@ export function BatchView() {
                         p.status !== "error" && <div className="skeleton mt-1 h-4 w-72 rounded" />
                       )}
                     </td>
-                    <td className="px-3 py-3 text-right font-mono text-xs text-ink-2 tabular-nums">
+                    <td className="px-3 py-3 text-right text-xs text-ink-2 tabular-nums">
                       {r?.keywords.length ?? "—"}
                     </td>
                     <td className="px-3 py-3">

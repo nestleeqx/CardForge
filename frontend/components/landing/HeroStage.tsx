@@ -59,7 +59,7 @@ function FloatingProducts() {
               {/* eslint-disable-next-line @next/next/no-img-element -- декоративное фото с CDN */}
               <img src={p.photo} alt="" draggable={false} className="aspect-square w-full rounded-xl object-cover" />
               <figcaption className="mt-2 flex items-center justify-between px-1 pb-0.5 text-[10px]">
-                <span className="font-mono text-ink-3">{p.sku}</span>
+                <span className="text-ink-3">{p.sku}</span>
                 <span className="inline-flex items-center gap-1 font-medium text-accent">
                   <span className="size-1.5 rounded-full bg-lime-strong" />
                   готово
@@ -81,7 +81,7 @@ function GeneratingCard({ index, stage }: { index: number; stage: Stage }) {
       <div className="flex items-center justify-between border-b border-line px-5 py-3">
         <div>
           <p className="text-[10px] font-medium tracking-wider text-ink-3 uppercase">Карточка для Ozon</p>
-          <p className="font-mono text-xs">{p.sku}</p>
+          <p className="text-xs">{p.sku}</p>
         </div>
         {stage.ready ? (
           <span key="ready" className="pop inline-flex items-center gap-1.5 rounded-full bg-lime px-2.5 py-1 text-xs font-medium text-accent-ink">
@@ -244,7 +244,7 @@ export function HeroStage({ children }: { children: ReactNode }) {
                   <MousePointerClick className="size-3" /> выберите строку
                 </span>
               </div>
-              <table className="w-full font-mono text-[10.5px]">
+              <table className="w-full text-[11px]">
                 <thead className="text-ink-3">
                   <tr className="border-b border-line bg-canvas">
                     {["Артикул", "Название", "Бренд", "Характеристики"].map((h) => (

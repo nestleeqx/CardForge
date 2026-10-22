@@ -31,7 +31,7 @@ export function MarketplacePreview({
           <h2 className="mt-1 text-xl leading-snug font-semibold text-balance">
             <Highlight text={title} marks={marksFor(warnings, "title")} />
           </h2>
-          <p className="mt-1 font-mono text-[11px] text-ink-3">Артикул {source.sku}</p>
+          <p className="mt-1 text-[11px] text-ink-3">Артикул {source.sku}</p>
 
           <h3 className="mt-6 text-sm font-semibold">О товаре</h3>
           <dl className="mt-2 space-y-1.5 text-sm">

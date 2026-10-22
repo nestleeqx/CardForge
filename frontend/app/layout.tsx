@@ -1,16 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono, Onest } from "next/font/google";
+import { Onest } from "next/font/google";
 import { ToastProvider } from "@/components/Toast";
 import { SITE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const onest = Onest({
   variable: "--font-onest",
-  subsets: ["latin", "cyrillic"],
-});
-
-const mono = JetBrains_Mono({
-  variable: "--font-mono-face",
   subsets: ["latin", "cyrillic"],
 });
 
@@ -39,7 +34,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" className={`${onest.variable} ${mono.variable} h-full antialiased`}>
+    <html lang="ru" className={`${onest.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
         <ToastProvider>{children}</ToastProvider>
       </body>

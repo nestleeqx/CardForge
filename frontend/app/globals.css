@@ -2,7 +2,6 @@
 
 @theme inline {
   --font-sans: var(--font-onest);
-  --font-mono: var(--font-mono-face);
 }
 
 /* Палитра «рабочий инструмент»: тёплые графитовые нейтральные и один акцент */

@@ -183,7 +183,7 @@ export default function Landing() {
                 delay={i * 90}
                 className="group relative overflow-hidden rounded-2xl border border-line bg-surface p-6 transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-24px_rgba(23,25,28,.3)]"
               >
-                <span className="absolute top-4 right-5 font-mono text-5xl leading-none font-semibold text-sunken transition-colors group-hover:text-lime/70">
+                <span className="absolute top-4 right-5 text-5xl leading-none font-semibold text-sunken transition-colors group-hover:text-lime/70">
                   {i + 1}
                 </span>
                 <span className="relative grid size-10 place-items-center rounded-xl bg-lime/70 text-accent-ink transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110">

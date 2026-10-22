@@ -36,7 +36,7 @@ function BatchRow({ batch, onDelete }: { batch: BatchSummary; onDelete: () => vo
       <div>
         <ProgressBar counts={batch.counts} total={batch.total} />
         <div className="mt-1.5 flex justify-between text-xs text-ink-3">
-          <span className="font-mono tabular-nums">
+          <span className="tabular-nums">
             {batch.counts.done}/{batch.total}
             {batch.counts.error > 0 && <span className="text-danger"> · {batch.counts.error} ош.</span>}
           </span>

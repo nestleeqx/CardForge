@@ -69,7 +69,7 @@ export function ProgressBar({ counts, total }: { counts: Record<ProductStatus, n
 export function CharCounter({ value, min, max }: { value: number; min?: number; max: number }) {
   const bad = value > max || (min !== undefined && value < min);
   return (
-    <span className={`font-mono text-[11px] tabular-nums ${bad ? "font-semibold text-danger" : "text-ink-3"}`}>
+    <span className={`text-[11px] tabular-nums ${bad ? "font-semibold text-danger" : "text-ink-3"}`}>
       {value}
       <span className="opacity-70">{min !== undefined ? ` / ${min}–${max}` : ` / ${max}`}</span>
     </span>

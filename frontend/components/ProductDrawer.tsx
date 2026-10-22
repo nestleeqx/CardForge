@@ -308,7 +308,7 @@ export function ProductDrawer({
           <ProductThumb src={src.photo} alt={src.name} className="size-10" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] text-ink-3">{src.sku || `строка ${product.row_index + 1}`}</span>
+              <span className="text-[11px] text-ink-3">{src.sku || `строка ${product.row_index + 1}`}</span>
               <StatusBadge status={product.status} />
               {product.edited && <span className="text-[11px] text-ink-3">изменено вручную</span>}
             </div>
