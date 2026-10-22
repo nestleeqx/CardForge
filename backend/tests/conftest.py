@@ -35,7 +35,8 @@ async def client():
             headers={"X-Visitor-Id": "test-visitor-0001"},
         ) as c:
             yield c
-        await app.state.queue.drain()
+        if hasattr(app.state.queue, "drain"):
+            await app.state.queue.drain()
     await engine.dispose()
 
 

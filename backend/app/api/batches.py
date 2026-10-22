@@ -143,8 +143,15 @@ async def list_batches(session: SessionDep, queue: QueueDep, owner: VisitorDep):
 
 
 @router.get("/batches/{batch_id}", response_model=BatchOut)
-async def get_batch(batch_id: str, session: SessionDep, owner: VisitorDep):
-    return batch_out(await load_batch(session, batch_id, owner))
+async def get_batch(batch_id: str, session: SessionDep, queue: QueueDep, owner: VisitorDep):
+    batch = await load_batch(session, batch_id, owner)
+    # Без фонового воркера (serverless) каждый опрос партии продвигает очередь на шаг
+    if getattr(queue, "polling", False) and any(
+        p.status in {"queued", "running"} for p in batch.products
+    ):
+        if await queue.advance(batch.id):
+            batch = await load_batch(session, batch_id, owner)
+    return batch_out(batch)
 
 
 @router.delete("/batches/{batch_id}", status_code=204)

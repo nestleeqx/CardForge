@@ -1,10 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Header, HTTPException
 
 from app.api.batches import batch_out, load_batch
 from app.config import get_settings
 from app.deps import IpDep, ProviderDep, QueueDep, RedisDep, SessionDep, VisitorDep
 from app.schemas import BatchOut, LimitsOut
-from app.services.demo import reset_demo
+from app.services.demo import cleanup_old, reset_demo
 from app.services.redis_store import hit_limit, remaining
 
 router = APIRouter(prefix="/api", tags=["misc"])
@@ -13,6 +13,16 @@ router = APIRouter(prefix="/api", tags=["misc"])
 @router.get("/health")
 async def health():
     return {"ok": True}
+
+
+@router.get("/cron/cleanup")
+async def cron_cleanup(session: SessionDep, authorization: str | None = Header(default=None)):
+    """Ночная очистка для Vercel Cron — там нет воркера arq с его расписанием."""
+    secret = get_settings().cron_secret
+    if not secret or authorization != f"Bearer {secret}":
+        raise HTTPException(401, "Нужен CRON_SECRET")
+    removed = await cleanup_old(session, get_settings().batch_ttl_hours)
+    return {"removed": removed}
 
 
 @router.get("/limits", response_model=LimitsOut)

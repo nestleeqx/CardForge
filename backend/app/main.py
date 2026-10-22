@@ -9,7 +9,7 @@ from app.api import batches, misc, products
 from app.config import get_settings
 from app.db import SessionLocal, init_db
 from app.llm import create_provider
-from app.services.processing import ArqQueue, InlineQueue
+from app.services.processing import ArqQueue, InlineQueue, PollQueue
 from app.services.redis_store import RateLimitExceeded, get_redis
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -34,7 +34,8 @@ async def lifespan(app: FastAPI):
         pool = await create_pool(RedisSettings.from_dsn(settings.redis_url))
         app.state.queue = ArqQueue(pool)
     else:
-        app.state.queue = InlineQueue(
+        queue_cls = PollQueue if settings.queue_mode == "poll" else InlineQueue
+        app.state.queue = queue_cls(
             SessionLocal, app.state.provider, get_redis(), settings.worker_concurrency
         )
     yield
@@ -47,6 +48,7 @@ app = FastAPI(title="CardForge API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origin_list,
+    allow_origin_regex=get_settings().cors_origin_regex or None,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition", "Retry-After"],
