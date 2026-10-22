@@ -79,18 +79,53 @@ def _materials(text: str) -> set[str]:
     return {name for name, pattern in MATERIALS.items() if re.search(pattern, text)}
 
 
-def find_fabrications(text: str, source: SourceProduct) -> list[str]:
-    """Числа и материалы из текста, которых нет в исходных данных."""
+def _normalize_number(raw: str) -> str:
+    value = raw.replace(",", ".")
+    if "." in value:
+        value = value.rstrip("0").rstrip(".")
+    return value
+
+
+def _fabrication_hits(text: str, source: SourceProduct) -> list[tuple[str, str]]:
+    """Пары (что выдумано, точный фрагмент текста) — фрагменты нужны для подсветки."""
     src = _source_text(source)
     src_numbers = _numbers(src)
     src_materials = _materials(src)
-    issues = [n for n in sorted(_numbers(text)) if n not in src_numbers]
-    issues += [m for m in sorted(_materials(text)) if m not in src_materials]
-    return issues
+    hits = [
+        (_normalize_number(m.group(1)), m.group(1))
+        for m in _NUMBER_RE.finditer(text)
+        if _normalize_number(m.group(1)) not in src_numbers
+    ]
+    for name, pattern in MATERIALS.items():
+        if name in src_materials:
+            continue
+        hits += [(name, m.group(0)) for m in re.finditer(pattern, text, re.I)]
+    return hits
+
+
+def _unique(items: list[str]) -> list[str]:
+    return list(dict.fromkeys(items))
+
+
+def find_fabrications(text: str, source: SourceProduct) -> list[str]:
+    """Числа и материалы из текста, которых нет в исходных данных."""
+    hits = _fabrication_hits(text, source)
+    numbers = sorted({label for label, raw in hits if raw[0].isdigit()})
+    materials = sorted({label for label, raw in hits if not raw[0].isdigit()})
+    return numbers + materials
+
+
+def _forbidden_hits(text: str) -> list[tuple[str, str]]:
+    hits = []
+    for pattern, label in FORBIDDEN_PATTERNS:
+        m = re.search(pattern, text, re.I)
+        if m:
+            hits.append((label, m.group(0)))
+    return hits
 
 
 def find_forbidden(text: str) -> list[str]:
-    return [label for pattern, label in FORBIDDEN_PATTERNS if re.search(pattern, text, re.I)]
+    return [label for label, _ in _forbidden_hits(text)]
 
 
 def check_source(source: SourceProduct) -> list[Warning_]:
@@ -154,32 +189,38 @@ def check_card(card: CardResult, source: SourceProduct, marketplace: Marketplace
         )
 
     for field, text in (("title", card.title), ("description", card.description)):
-        for word in find_forbidden(text):
+        for label, raw in _forbidden_hits(text):
             warnings.append(
                 Warning_(
-                    code="forbidden_word", field=field, message=f"Запрещённая формулировка {word}"
+                    code="forbidden_word",
+                    field=field,
+                    message=f"Запрещённая формулировка {label}",
+                    terms=[raw],
                 )
             )
-        fabricated = find_fabrications(text, source)
-        if fabricated:
+        hits = _fabrication_hits(text, source)
+        if hits:
             warnings.append(
                 Warning_(
                     code="suspected_fabrication",
                     field=field,
-                    message="Нет в исходных данных: " + ", ".join(fabricated),
+                    message="Нет в исходных данных: " + ", ".join(find_fabrications(text, source)),
+                    terms=_unique([raw for _, raw in hits]),
                 )
             )
 
-    attr_text = " ".join(f"{a.name} {a.value}" for a in card.attributes)
-    fabricated = find_fabrications(attr_text, source)
-    if fabricated:
-        warnings.append(
-            Warning_(
-                code="suspected_fabrication",
-                field="attributes",
-                message="В характеристиках нет в исходнике: " + ", ".join(fabricated),
+    for attr in card.attributes:
+        hits = _fabrication_hits(f"{attr.name} {attr.value}", source)
+        if hits:
+            warnings.append(
+                Warning_(
+                    code="suspected_fabrication",
+                    field="attributes",
+                    message=f"{attr.name}: нет в исходнике — "
+                    + ", ".join(_unique([label for label, _ in hits])),
+                    terms=_unique([raw for _, raw in hits]),
+                )
             )
-        )
 
     for note in card.notes:
         warnings.append(Warning_(code="model_note", message=note))

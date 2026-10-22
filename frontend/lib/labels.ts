@@ -20,11 +20,11 @@ export const LENGTHS: Record<Length, { label: string; hint: string }> = {
   long: { label: "Развёрнутое", hint: "1400–2000 символов" },
 };
 
-export const STATUSES: Record<ProductStatus, { label: string; className: string }> = {
-  queued: { label: "В очереди", className: "bg-slate-100 text-slate-600" },
-  running: { label: "В работе", className: "bg-blue-50 text-blue-700" },
-  done: { label: "Готово", className: "bg-emerald-50 text-emerald-700" },
-  error: { label: "Ошибка", className: "bg-rose-50 text-rose-700" },
+export const STATUSES: Record<ProductStatus, { label: string; text: string; dot: string }> = {
+  queued: { label: "В очереди", text: "text-ink-3", dot: "bg-ink-3" },
+  running: { label: "В работе", text: "text-info", dot: "bg-info" },
+  done: { label: "Готово", text: "text-accent", dot: "bg-accent" },
+  error: { label: "Ошибка", text: "text-danger", dot: "bg-danger" },
 };
 
 export const SOURCE_FIELDS: Record<SourceField, { label: string; required?: boolean; hint: string }> = {

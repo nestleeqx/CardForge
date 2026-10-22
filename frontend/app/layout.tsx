@@ -1,31 +1,47 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { Header } from "@/components/Header";
+import type { Metadata, Viewport } from "next";
+import { JetBrains_Mono, Onest } from "next/font/google";
 import { ToastProvider } from "@/components/Toast";
+import { SITE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const onest = Onest({
+  variable: "--font-onest",
+  subsets: ["latin", "cyrillic"],
+});
+
+const mono = JetBrains_Mono({
+  variable: "--font-mono-face",
   subsets: ["latin", "cyrillic"],
 });
 
 export const metadata: Metadata = {
-  title: "CardForge — карточки товаров для Ozon и Wildberries",
-  description:
-    "Загрузите таблицу с товарами и получите готовые названия, описания, характеристики и ключевые слова для маркетплейсов.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE.title, template: `%s — ${SITE.name}` },
+  description: SITE.description,
+  keywords: SITE.keywords,
+  applicationName: SITE.name,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    url: "/",
+    siteName: SITE.name,
+    title: SITE.title,
+    description: SITE.description,
+  },
+  twitter: { card: "summary_large_image", title: SITE.title, description: SITE.description },
+  robots: { index: true, follow: true },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#141414",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" className={`${inter.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans">
-        <ToastProvider>
-          <Header />
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">{children}</main>
-          <footer className="border-t border-slate-200 py-5 text-center text-xs text-slate-500">
-            CardForge — демо-проект. Магазин «Уютный угол» и товары вымышлены.
-          </footer>
-        </ToastProvider>
+    <html lang="ru" className={`${onest.variable} ${mono.variable} h-full antialiased`}>
+      <body className="min-h-full font-sans">
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

@@ -38,6 +38,7 @@ export interface CardWarning {
     | "model_note";
   field: CardField | null;
   message: string;
+  terms: string[];
 }
 
 export interface Product {

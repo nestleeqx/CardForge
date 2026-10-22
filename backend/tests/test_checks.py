@@ -67,7 +67,11 @@ def test_csv_semicolon_cp1251_and_mapping():
     assert mapping["sku"] == "Код товара" and mapping["brand"] == "Производитель"
 
 
-def test_demo_cards_have_no_fabrications():
+# В двух демо-карточках специально оставлены типичные ошибки модели — для показа подсветки
+INTENTIONAL_DEMO_ISSUES = {"UU-012": "forbidden_word", "UU-025": "suspected_fabrication"}
+
+
+def test_demo_cards_are_clean_except_intentional_examples():
     from app.services.demo import _demo_results, _demo_rows
 
     columns, rows = _demo_rows()
@@ -77,9 +81,30 @@ def test_demo_cards_have_no_fabrications():
     for row in rows:
         source = build_source(row, mapping, extra_as_attributes=True)
         card = CardResult.model_validate(results[source.sku])
-        bad = [
-            w.message
+        codes = {
+            w.code
             for w in check_card(card, source, "ozon")
             if w.code not in {"missing_data", "model_note"}
-        ]
-        assert not bad, (source.sku, bad)
+        }
+        expected = (
+            {INTENTIONAL_DEMO_ISSUES[source.sku]}
+            if source.sku in INTENTIONAL_DEMO_ISSUES
+            else set()
+        )
+        assert codes == expected, (source.sku, codes)
+
+
+def test_warnings_carry_exact_terms_for_highlighting():
+    card = CardResult(
+        title="Лучший плед Nordika",
+        description="Плед весом 1,2 кг из хлопковой пряжи. " * 20,
+        attributes=SOURCE.attributes,
+        keywords=[f"плед {i}" for i in range(12)],
+    )
+    warnings = check_card(card, SOURCE, "ozon")
+    forbidden = next(w for w in warnings if w.code == "forbidden_word")
+    assert forbidden.field == "title" and forbidden.terms == ["Лучший"]
+    fabricated = next(
+        w for w in warnings if w.code == "suspected_fabrication" and w.field == "description"
+    )
+    assert fabricated.terms == ["1,2", "хлопковой"]

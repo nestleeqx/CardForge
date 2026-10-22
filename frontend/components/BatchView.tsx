@@ -1,21 +1,39 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, Download, Loader2, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, ChevronRight, Download, Loader2, RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
-import { LENGTHS, MARKETPLACES, plural, STATUSES, TONES } from "@/lib/labels";
+import { LENGTHS, MARKETPLACES, TONES } from "@/lib/labels";
 import type { Batch, Product } from "@/lib/types";
 import { ProductDrawer } from "./ProductDrawer";
-import { Button, Card, ProgressBar, StatusBadge } from "./ui";
+import { ProductThumb } from "./ProductThumb";
 import { useToast } from "./Toast";
+import { Button, Chip, Panel, ProgressBar, StatusBadge } from "./ui";
 
 type Filter = "all" | "warnings" | "error";
 
 function isActive(b?: Batch) {
   return !!b && b.counts.queued + b.counts.running > 0;
+}
+
+/** Предупреждения, которые требуют внимания (без заметок о нехватке исходных данных). */
+function issues(p: Product) {
+  return p.warnings.filter((w) => w.code !== "missing_data" && w.code !== "model_note");
+}
+
+function Stat({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+  return (
+    <div className="px-4 py-3">
+      <p className="text-xs text-ink-3">{label}</p>
+      <p className="mt-0.5 text-lg font-semibold tracking-tight tabular-nums">
+        {value}
+        {hint && <span className="ml-1 text-xs font-normal text-ink-3">{hint}</span>}
+      </p>
+    </div>
+  );
 }
 
 export function BatchView() {
@@ -43,19 +61,22 @@ export function BatchView() {
 
   if (error) {
     return (
-      <Card className="p-8 text-center">
-        <p className="text-rose-600">{error.message}</p>
-        <Link href="/" className="mt-3 inline-block text-sm text-indigo-600">
+      <Panel className="p-10 text-center">
+        <p className="text-danger">{error.message}</p>
+        <Link href="/app" className="mt-3 inline-block text-sm text-accent">
           К списку партий
         </Link>
-      </Card>
+      </Panel>
     );
   }
-  if (!batch) return <div className="skeleton h-64 rounded-2xl" />;
+  if (!batch) return <div className="skeleton h-80 rounded-xl" />;
 
   const active = isActive(batch);
   const titleMax = MARKETPLACES[batch.marketplace].titleMax;
   const processed = batch.counts.done + batch.counts.error;
+  const done = batch.products.filter((p) => p.result);
+  const avg = (f: (p: Product) => number) =>
+    done.length ? Math.round(done.reduce((n, p) => n + f(p), 0) / done.length) : 0;
   const withWarnings = batch.products.filter((p) => p.warnings.length > 0).length;
   const openIndex = products.findIndex((p) => p.id === openId);
   const openProduct = batch.products.find((p) => p.id === openId) ?? null;
@@ -92,27 +113,28 @@ export function BatchView() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link href="/" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
-            <ArrowLeft className="size-4" /> Все партии
-          </Link>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight">
-            {batch.filename}
-            {batch.is_demo && (
-              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
-                демо «Уютный угол»
-              </span>
-            )}
+        <div className="min-w-0">
+          <nav className="flex items-center gap-1 text-xs text-ink-3">
+            <Link href="/app" className="hover:text-ink">
+              Партии
+            </Link>
+            <ChevronRight className="size-3" />
+            <span className="truncate">{batch.filename}</span>
+          </nav>
+          <h1 className="mt-1.5 text-xl font-semibold tracking-tight">
+            {batch.is_demo ? "Уютный угол — товары для дома" : batch.filename}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {MARKETPLACES[batch.marketplace].label} · тон {TONES[batch.tone].label.toLowerCase()} · описание{" "}
-            {LENGTHS[batch.length].label.toLowerCase()} ({LENGTHS[batch.length].hint})
-          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Chip tone="accent">{MARKETPLACES[batch.marketplace].label}</Chip>
+            <Chip>тон: {TONES[batch.tone].label.toLowerCase()}</Chip>
+            <Chip>описание: {LENGTHS[batch.length].hint}</Chip>
+            {batch.is_demo && <Chip>демо-партия</Chip>}
+          </div>
         </div>
         <div className="flex gap-2">
           {batch.counts.error > 0 && !active && (
             <Button loading={retrying} onClick={retryFailed} icon={<RefreshCw className="size-4" />}>
-              Перезапустить упавшие ({batch.counts.error})
+              Перезапустить упавшие · {batch.counts.error}
             </Button>
           )}
           <Button
@@ -122,139 +144,149 @@ export function BatchView() {
             onClick={exportXlsx}
             icon={<Download className="size-4" />}
           >
-            Скачать XLSX для {MARKETPLACES[batch.marketplace].label}
+            Скачать XLSX
           </Button>
         </div>
       </div>
 
-      <Card className="p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-          <span className="flex items-center gap-2 font-medium">
-            {active && <Loader2 className="size-4 animate-spin text-blue-600" />}
-            {active ? "Идёт генерация" : "Генерация завершена"}: {processed} из {batch.total}
-          </span>
-          <span className="flex flex-wrap gap-3 text-xs text-slate-500">
-            {(Object.keys(STATUSES) as (keyof typeof STATUSES)[]).map((s) => (
-              <span key={s}>
-                {STATUSES[s].label}: <b className="text-slate-700">{batch.counts[s]}</b>
-              </span>
-            ))}
-          </span>
+      <Panel className="overflow-hidden">
+        <div className="grid grid-cols-2 divide-line md:grid-cols-4 md:divide-x">
+          <Stat label="Готово карточек" value={`${batch.counts.done} из ${batch.total}`} />
+          <Stat label="С замечаниями" value={withWarnings} hint={withWarnings ? "проверьте вручную" : undefined} />
+          <Stat label="Средняя длина названия" value={avg((p) => p.result!.title.length)} hint={`из ${titleMax}`} />
+          <Stat label="Средняя длина описания" value={avg((p) => p.result!.description.length)} hint="символов" />
         </div>
-        <ProgressBar counts={batch.counts} total={batch.total} />
-      </Card>
+        <div className="border-t border-line px-4 py-3">
+          <div className="mb-2 flex items-center justify-between text-xs text-ink-2">
+            <span className="flex items-center gap-1.5">
+              {active && <Loader2 className="size-3.5 animate-spin text-info" />}
+              {active ? `Генерация идёт: ${processed} из ${batch.total}` : "Генерация завершена"}
+            </span>
+            <span className="font-mono text-ink-3 tabular-nums">
+              в очереди {batch.counts.queued} · в работе {batch.counts.running} · ошибок {batch.counts.error}
+            </span>
+          </div>
+          <ProgressBar counts={batch.counts} total={batch.total} />
+        </div>
+      </Panel>
 
-      <Card>
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
-          <div className="flex rounded-lg bg-slate-100 p-0.5 text-sm">
+      <Panel>
+        <div className="flex flex-wrap items-center gap-3 border-b border-line px-3 py-2.5">
+          <div className="flex rounded-lg bg-sunken p-0.5 text-[13px]">
             {(
               [
-                ["all", `Все ${batch.total}`],
-                ["warnings", `С предупреждениями ${withWarnings}`],
-                ["error", `Ошибки ${batch.counts.error}`],
-              ] as [Filter, string][]
-            ).map(([key, label]) => (
+                ["all", "Все", batch.total],
+                ["warnings", "С замечаниями", withWarnings],
+                ["error", "Ошибки", batch.counts.error],
+              ] as [Filter, string, number][]
+            ).map(([key, label, count]) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`rounded-md px-3 py-1 transition ${filter === key ? "bg-white font-medium shadow-sm" : "text-slate-500"}`}
+                className={`rounded-md px-2.5 py-1 transition ${
+                  filter === key ? "bg-surface font-medium text-ink shadow-sm" : "text-ink-2 hover:text-ink"
+                }`}
               >
-                {label}
+                {label} <span className="font-mono text-[11px] text-ink-3">{count}</span>
               </button>
             ))}
           </div>
           <label className="relative ml-auto">
-            <Search className="absolute top-2 left-2.5 size-4 text-slate-400" />
+            <Search className="absolute top-2 left-2.5 size-4 text-ink-3" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Артикул или название"
-              className="w-60 rounded-lg border border-slate-200 py-1.5 pr-3 pl-8 text-sm focus:border-indigo-500 focus:outline-none"
+              className="h-8 w-60 rounded-lg border border-line bg-surface pr-3 pl-8 text-sm placeholder:text-ink-3 focus:border-accent focus:outline-none"
             />
           </label>
         </div>
 
         <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="text-xs text-slate-500">
-              <tr className="border-b border-slate-100">
-                <th className="px-4 py-2.5 font-medium">Артикул</th>
-                <th className="px-4 py-2.5 font-medium">Было</th>
-                <th className="px-4 py-2.5 font-medium">Стало: название</th>
-                <th className="px-4 py-2.5 font-medium">Описание</th>
-                <th className="px-4 py-2.5 text-center font-medium">Ключи</th>
-                <th className="px-4 py-2.5 font-medium">Проверки</th>
-                <th className="px-4 py-2.5 font-medium">Статус</th>
+          <table className="w-full min-w-[960px] text-left text-sm">
+            <thead className="text-xs text-ink-3">
+              <tr className="border-b border-line">
+                <th className="py-2 pr-3 pl-4 font-medium">Товар из таблицы</th>
+                <th className="px-3 py-2 font-medium">Название для {MARKETPLACES[batch.marketplace].label}</th>
+                <th className="px-3 py-2 font-medium">Описание</th>
+                <th className="px-3 py-2 text-right font-medium">Ключи</th>
+                <th className="px-3 py-2 font-medium">Проверки</th>
+                <th className="py-2 pr-4 pl-3 font-medium">Статус</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-line">
               {products.map((p) => {
                 const r = p.result;
                 const titleOver = r && r.title.length > titleMax;
+                const problems = issues(p);
+                const notes = p.warnings.length - problems.length;
                 return (
                   <tr
                     key={p.id}
                     onClick={() => setOpenId(p.id)}
-                    className="cursor-pointer border-b border-slate-50 align-top transition hover:bg-indigo-50/40"
+                    className={`cursor-pointer align-top transition-colors hover:bg-canvas ${openId === p.id ? "bg-accent-soft/40" : ""}`}
                   >
-                    <td className="px-4 py-3 font-mono text-xs whitespace-nowrap text-slate-500">
-                      {p.source.sku || `#${p.row_index + 1}`}
-                    </td>
-                    <td className="max-w-44 px-4 py-3">
-                      <div className="truncate">{p.source.name}</div>
-                      <div className="truncate text-xs text-slate-400">
-                        {p.source.attributes.length} {plural(p.source.attributes.length, ["характеристика", "характеристики", "характеристик"])}
+                    <td className="py-3 pr-3 pl-4">
+                      <div className="flex w-56 items-center gap-3">
+                        <ProductThumb src={p.source.photo} alt={p.source.name} className="size-11" />
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{p.source.name}</div>
+                          <div className="truncate font-mono text-[11px] text-ink-3">
+                            {p.source.sku || `#${p.row_index + 1}`} · {p.source.brand || "без бренда"}
+                          </div>
+                        </div>
                       </div>
                     </td>
-                    <td className="max-w-80 px-4 py-3">
+                    <td className="max-w-80 px-3 py-3">
                       {r ? (
                         <>
-                          <div className="line-clamp-2 font-medium">{r.title}</div>
-                          <div className={`text-xs ${titleOver ? "font-semibold text-rose-600" : "text-slate-400"}`}>
-                            {r.title.length} / {titleMax}
+                          <div className="line-clamp-2 leading-snug">{r.title}</div>
+                          <div
+                            className={`mt-0.5 font-mono text-[11px] tabular-nums ${titleOver ? "font-semibold text-danger" : "text-ink-3"}`}
+                          >
+                            {r.title.length}/{titleMax}
                           </div>
                         </>
                       ) : p.status === "error" ? (
-                        <span className="text-xs text-rose-600">{p.error}</span>
+                        <span className="text-xs text-danger">{p.error}</span>
                       ) : (
-                        <div className="skeleton h-4 w-48 rounded" />
+                        <div className="skeleton mt-1 h-4 w-52 rounded" />
                       )}
                     </td>
-                    <td className="max-w-96 px-4 py-3 text-slate-600">
+                    <td className="max-w-md px-3 py-3 text-ink-2">
                       {r ? (
-                        <div className="line-clamp-2">{r.description}</div>
+                        <div className="line-clamp-2 leading-snug">{r.description}</div>
                       ) : (
-                        p.status !== "error" && <div className="skeleton h-4 w-64 rounded" />
+                        p.status !== "error" && <div className="skeleton mt-1 h-4 w-72 rounded" />
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center text-slate-600">{r?.keywords.length ?? "—"}</td>
-                    <td className="px-4 py-3">
-                      {p.warnings.length > 0 ? (
-                        <span
-                          className="inline-flex items-center gap-1 text-xs text-amber-700"
-                          title={p.warnings.map((w) => w.message).join("\n")}
-                        >
-                          <AlertTriangle className="size-3.5" />
-                          {p.warnings.length}
-                        </span>
-                      ) : (
-                        r && <span className="text-xs text-emerald-600">ок</span>
-                      )}
+                    <td className="px-3 py-3 text-right font-mono text-xs text-ink-2 tabular-nums">
+                      {r?.keywords.length ?? "—"}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <StatusBadge status={p.status} />
-                        {p.edited && <span className="text-xs text-slate-400">правка</span>}
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-1" title={p.warnings.map((w) => w.message).join("\n")}>
+                        {problems.length > 0 && (
+                          <Chip tone="warn">
+                            <AlertTriangle className="size-3" />
+                            {problems.length}
+                          </Chip>
+                        )}
+                        {notes > 0 && <Chip>заметок: {notes}</Chip>}
+                        {r && p.warnings.length === 0 && <span className="text-xs whitespace-nowrap text-ink-3">без замечаний</span>}
                       </div>
+                    </td>
+                    <td className="py-3 pr-4 pl-3">
+                      <StatusBadge status={p.status} />
+                      {p.edited && <div className="mt-0.5 text-[11px] text-ink-3">правка</div>}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          {products.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Ничего не найдено</p>}
+          {products.length === 0 && <p className="p-8 text-center text-sm text-ink-3">Ничего не найдено</p>}
         </div>
-      </Card>
+      </Panel>
 
       {openProduct && (
         <ProductDrawer

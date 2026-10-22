@@ -74,6 +74,8 @@ class Warning_(BaseModel):
     ]
     field: CardField | None = None
     message: str
+    # Точные фрагменты текста поля, которые надо подсветить
+    terms: list[str] = []
 
 
 class CardResult(BaseModel):
