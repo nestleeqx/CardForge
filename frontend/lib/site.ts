@@ -1,4 +1,10 @@
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+// Адрес сайта для canonical, sitemap и Open Graph. Если NEXT_PUBLIC_SITE_URL не задан,
+// на Vercel берём адрес продакшена, который платформа сама передаёт в сборку Next.js.
+const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL;
+
+export const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || (vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000")
+).replace(/\/$/, "");
 
 export const SITE = {
   name: "CardForge",

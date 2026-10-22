@@ -8,7 +8,8 @@
 
 ## 🚀 Демо
 
-- Демо: _ссылка появится после деплоя_
+- Демо: **https://cardforge-weld.vercel.app**
+- API: https://cardforge-api.vercel.app/docs
 - Регистрация не нужна: при первом входе у вас своя копия демо-партии, которую можно править и сбрасывать.
 - `/` — лендинг, `/app` — рабочее пространство, `/app/demo` — сразу открывает демо-партию.
 
@@ -169,8 +170,8 @@ flowchart LR
    | Переменная | Значение |
    | --- | --- |
    | `CRON_SECRET` | случайная строка — Vercel Cron передаёт её в `Authorization` |
-   | `CORS_ORIGINS` | адрес фронтенда, например `https://cardforge.vercel.app` |
-   | `CORS_ORIGIN_REGEX` | необязательно, для превью: `^https://cardforge-.*\.vercel\.app$` |
+   | `CORS_ORIGINS` | адрес фронтенда, например `https://cardforge-weld.vercel.app` |
+   | `CORS_ORIGIN_REGEX` | необязательно, для превью: `^https://cardforge-weld-.*\.vercel\.app$` |
    | `LLM_PROVIDER` | `mock`, позже — `openai` или `yandex` с ключами |
 
 4. Deploy и проверить `https://cardforge-api.vercel.app/api/health` → `{"ok": true}`.
@@ -185,9 +186,9 @@ flowchart LR
    | Переменная | Значение |
    | --- | --- |
    | `NEXT_PUBLIC_API_URL` | `https://cardforge-api.vercel.app` |
-   | `NEXT_PUBLIC_SITE_URL` | `https://cardforge.vercel.app` — для canonical, sitemap и Open Graph |
+   | `NEXT_PUBLIC_SITE_URL` | необязательно: по умолчанию берётся адрес продакшена Vercel |
 
-3. Deploy. Если адрес фронтенда отличается от указанного в `CORS_ORIGINS` у API — поправить там и сделать Redeploy API.
+3. Deploy. Переменные `NEXT_PUBLIC_*` вшиваются в код при сборке: после их изменения нужен Redeploy. Если адрес фронтенда отличается от указанного в `CORS_ORIGINS` у API — поправить там и сделать Redeploy API.
 
 ### Альтернатива: VPS
 
