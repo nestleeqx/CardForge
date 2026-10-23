@@ -1,6 +1,7 @@
 """Генерация карточки и перегенерация одного поля."""
 
 import logging
+import re
 
 from redis.asyncio import Redis
 
@@ -46,18 +47,38 @@ def _clean(card: CardResult, source: SourceProduct) -> CardResult:
             "title": " ".join(card.title.split()),
             "description": card.description.strip(),
             "keywords": keywords,
-            "attributes": _source_spelling(card, source),
+            "attributes": _tidy_attributes(card, source),
         }
     )
 
 
-def _source_spelling(card: CardResult, source: SourceProduct) -> list[Attribute]:
-    """Значения характеристик, совпадающие с таблицей без учёта регистра, пишем как в таблице:
-    модель любит делать «Лавандовый» из «лавандовый»."""
-    known = {a.value.lower(): a.value for a in source.attributes}
-    return [
-        a.model_copy(update={"value": known.get(a.value.lower(), a.value)}) for a in card.attributes
-    ]
+_UNIT_IN_NAME = re.compile(r"^(.+?),\s*([^\d,]{1,8})$")
+_NUMBER = re.compile(r"^\d+(?:[.,]\d+)?$")
+
+
+def _tidy_attributes(card: CardResult, source: SourceProduct) -> list[Attribute]:
+    """Значения характеристик пишем как в таблице, единицы переносим из названия в значение.
+
+    Модель любит делать «Лавандовый» из «лавандовый» и терять единицу: из «Вес, г: 900»
+    получается «Вес: 900». Возвращаем «лавандовый» и «Вес: 900 г».
+    """
+    spelling = {a.value.lower(): a.value for a in source.attributes}
+    # Единица для числа из таблицы: «900» из колонки «Вес, г» → «г»
+    units = {}
+    for a in source.attributes:
+        m = _UNIT_IN_NAME.match(a.name)
+        if m and _NUMBER.match(a.value.strip()):
+            units[a.value.strip()] = (m.group(1).strip(), m.group(2).strip())
+    tidy = []
+    for a in card.attributes:
+        name, value = a.name, spelling.get(a.value.lower(), a.value)
+        m = _UNIT_IN_NAME.match(name)
+        if m and _NUMBER.match(value.strip()):
+            name, value = m.group(1).strip(), f"{value.strip()} {m.group(2).strip()}"
+        elif value.strip() in units and units[value.strip()][0].lower() == name.lower():
+            value = f"{value.strip()} {units[value.strip()][1]}"
+        tidy.append(a.model_copy(update={"name": name, "value": value}))
+    return tidy
 
 
 async def generate_card(

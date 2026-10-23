@@ -44,7 +44,7 @@ export const CARD_FIELDS: Record<CardField, string> = {
 };
 
 export const QUICK_COMMENTS: Record<CardField, string[]> = {
-  title: ["короче", "добавь размер", "без бренда в начале"],
+  title: ["короче", "добавь размер", "без бренда"],
   description: ["короче", "больше про материал", "больше про уход", "без воды"],
   attributes: ["убери дубли", "единицы измерения в одном формате"],
   keywords: ["больше длинных запросов", "без бренда", "больше подарочных запросов"],

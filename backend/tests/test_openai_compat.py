@@ -75,15 +75,30 @@ def test_attribute_values_keep_source_spelling():
     from app.schemas import Attribute, SourceProduct
     from app.services.generator import _clean
 
-    source = SourceProduct(name="Коврик", attributes=[Attribute(name="Цвет", value="лавандовый")])
+    source = SourceProduct(
+        name="Коврик",
+        attributes=[
+            Attribute(name="Цвет", value="лавандовый"),
+            Attribute(name="Вес, г", value="900"),
+            Attribute(name="Объём, мл", value="600"),
+        ],
+    )
     card = CardResult(
         title="Коврик",
         description="Текст",
         attributes=[
             Attribute(name="Цвет", value="Лавандовый"),
             Attribute(name="Размер", value="183 × 61 см"),
+            # Единица потеряна вместе с названием колонки / осталась в названии
+            Attribute(name="Вес", value="900"),
+            Attribute(name="Объём, мл", value="600"),
         ],
         keywords=[],
     )
-    values = [a.value for a in _clean(card, source).attributes]
-    assert values == ["лавандовый", "183 × 61 см"]
+    attrs = [(a.name, a.value) for a in _clean(card, source).attributes]
+    assert attrs == [
+        ("Цвет", "лавандовый"),
+        ("Размер", "183 × 61 см"),
+        ("Вес", "900 г"),
+        ("Объём", "600 мл"),
+    ]
