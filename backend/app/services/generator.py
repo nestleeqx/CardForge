@@ -137,7 +137,6 @@ def _without_removed_brand(
 
 async def regenerate_field(
     provider: LLMProvider,
-    redis: Redis,
     source: SourceProduct,
     settings: GenerationSettings,
     current: CardResult,
@@ -156,7 +155,9 @@ async def regenerate_field(
     # Как и при генерации карточки: если поле нарушило лимиты (например, «короче» ушло
     # ниже минимума описания), один раз просим исправить и берём лучший вариант
     for _ in range(MAX_ATTEMPTS):
-        draft = await cached_complete(redis, provider, system, prompt, FIELD_SCHEMAS[field])
+        # Без кэша: «Переписать» с тем же пожеланием должно давать новый вариант,
+        # иначе повтор после неудачи вернул бы тот же неудачный ответ
+        draft = await provider.complete_json(system, prompt, FIELD_SCHEMAS[field])
         card = _clean(current.model_copy(update={field: getattr(draft, field)}), source)
         violations = hard_violations(card, source, settings.marketplace, field)
         if shorter:

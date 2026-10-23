@@ -142,8 +142,6 @@ def test_field_prompt_for_every_field():
 
 
 async def test_field_rewrite_retries_when_too_short():
-    import fakeredis
-
     from app.llm.base import LLMProvider
     from app.schemas import GenerationSettings, SourceProduct
     from app.services.generator import regenerate_field
@@ -164,7 +162,6 @@ async def test_field_rewrite_retries_when_too_short():
     settings = GenerationSettings(marketplace="ozon", tone="selling", length="short")
     result, _ = await regenerate_field(
         provider,
-        fakeredis.FakeAsyncRedis(decode_responses=True),
         SourceProduct(name="Плед"),
         settings,
         card,
@@ -176,8 +173,6 @@ async def test_field_rewrite_retries_when_too_short():
 
 
 async def test_shorter_never_returns_longer_text():
-    import fakeredis
-
     from app.llm.base import LLMProvider
     from app.schemas import GenerationSettings, SourceProduct
     from app.services.generator import NotShorter, regenerate_field
@@ -200,7 +195,6 @@ async def test_shorter_never_returns_longer_text():
     with pytest.raises(NotShorter):
         await regenerate_field(
             provider,
-            fakeredis.FakeAsyncRedis(decode_responses=True),
             SourceProduct(name="Плед"),
             settings,
             card,
@@ -209,3 +203,29 @@ async def test_shorter_never_returns_longer_text():
         )
     # Во второй попытке модель получила точный коридор длины
     assert f"от 500 до {len(current) - 1}" in provider.prompts[1]
+
+
+async def test_repeated_rewrite_asks_the_model_again():
+    from app.llm.base import LLMProvider
+    from app.schemas import GenerationSettings, SourceProduct
+    from app.services.generator import regenerate_field
+
+    class Counting(LLMProvider):
+        name, model = "counting", "test"
+        calls = 0
+
+        async def _complete(self, system, user, schema):
+            self.calls += 1
+            # Без цифр: число не из таблицы проверки сочли бы выдумкой и переспросили
+            return json.dumps(
+                {"title": ["Плед вязаный мягкий", "Плед вязаный тёплый"][self.calls - 1]}
+            )
+
+    provider = Counting()
+    card = CardResult(title="Плед", description="Текст", attributes=[], keywords=[])
+    settings = GenerationSettings(marketplace="ozon", tone="selling", length="short")
+    source = SourceProduct(name="Плед")
+    first, _ = await regenerate_field(provider, source, settings, card, "title", "живее")
+    second, _ = await regenerate_field(provider, source, settings, card, "title", "живее")
+    # Тот же запрос — но новый вариант, а не ответ из кэша
+    assert provider.calls == 2 and first.title != second.title

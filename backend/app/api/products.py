@@ -79,7 +79,6 @@ async def regenerate(
     try:
         card, warnings = await regenerate_field(
             provider,
-            redis,
             SourceProduct.model_validate(product.source),
             _settings(product),
             CardResult.model_validate(product.result),
