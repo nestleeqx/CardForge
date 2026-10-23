@@ -69,3 +69,21 @@ def test_strict_schema_keeps_fields_named_title():
     assert strict_schema(FIELD_SCHEMAS["title"])["required"] == ["title"]
     # Служебные заголовки Pydantic при этом убраны
     assert "title" not in schema and "title" not in schema["properties"]["description"]
+
+
+def test_attribute_values_keep_source_spelling():
+    from app.schemas import Attribute, SourceProduct
+    from app.services.generator import _clean
+
+    source = SourceProduct(name="Коврик", attributes=[Attribute(name="Цвет", value="лавандовый")])
+    card = CardResult(
+        title="Коврик",
+        description="Текст",
+        attributes=[
+            Attribute(name="Цвет", value="Лавандовый"),
+            Attribute(name="Размер", value="183 × 61 см"),
+        ],
+        keywords=[],
+    )
+    values = [a.value for a in _clean(card, source).attributes]
+    assert values == ["лавандовый", "183 × 61 см"]

@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 
 from app.llm import LLMInvalidResponse, LLMProvider
 from app.schemas import (
+    Attribute,
     AttributesDraft,
     CardDraft,
     CardField,
@@ -34,7 +35,7 @@ FIELD_SCHEMAS = {
 MAX_ATTEMPTS = 2
 
 
-def _clean(card: CardResult) -> CardResult:
+def _clean(card: CardResult, source: SourceProduct) -> CardResult:
     keywords: list[str] = []
     for kw in card.keywords:
         kw = " ".join(kw.lower().split())
@@ -45,8 +46,18 @@ def _clean(card: CardResult) -> CardResult:
             "title": " ".join(card.title.split()),
             "description": card.description.strip(),
             "keywords": keywords,
+            "attributes": _source_spelling(card, source),
         }
     )
+
+
+def _source_spelling(card: CardResult, source: SourceProduct) -> list[Attribute]:
+    """Значения характеристик, совпадающие с таблицей без учёта регистра, пишем как в таблице:
+    модель любит делать «Лавандовый» из «лавандовый»."""
+    known = {a.value.lower(): a.value for a in source.attributes}
+    return [
+        a.model_copy(update={"value": known.get(a.value.lower(), a.value)}) for a in card.attributes
+    ]
 
 
 async def generate_card(
@@ -68,7 +79,7 @@ async def generate_card(
             last_error = e
             prompt = repair_prompt(user, [str(e)[:500]])
             continue
-        card = _clean(CardResult.model_validate(draft.model_dump()))
+        card = _clean(CardResult.model_validate(draft.model_dump()), source)
         violations = hard_violations(card, source, settings.marketplace)
         if best is None or len(violations) < len(best_violations):
             best, best_violations = card, violations
@@ -94,5 +105,5 @@ async def regenerate_field(
 ) -> tuple[CardResult, list[Warning_]]:
     system, user = field_prompt(source, settings, current, field, comment)
     draft = await cached_complete(redis, provider, system, user, FIELD_SCHEMAS[field])
-    card = _clean(current.model_copy(update={field: getattr(draft, field)}))
+    card = _clean(current.model_copy(update={field: getattr(draft, field)}), source)
     return card, check_card(card, source, settings.marketplace)
