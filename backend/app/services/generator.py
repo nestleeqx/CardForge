@@ -20,9 +20,16 @@ from app.schemas import (
     Warning_,
 )
 from app.services.checks import check_card, hard_violations
-from app.services.prompts import FIELD_LABELS, card_prompt, field_prompt, repair_prompt
+from app.services.prompts import (
+    FIELD_LABELS,
+    card_prompt,
+    field_prompt,
+    length_floor,
+    repair_prompt,
+    shorten_target,
+    words,
+)
 from app.services.redis_store import cached_complete
-from app.services.rules import RULES
 
 log = logging.getLogger(__name__)
 
@@ -181,8 +188,13 @@ class NotShorter(Exception):
 def _not_shorter(
     text: str, before: str, field: CardField, settings: GenerationSettings
 ) -> list[str]:
-    """Замечание для повторной попытки, с точным коридором длины."""
-    floor = RULES[settings.marketplace].description_min if field == "description" else 1
+    """Замечание для повторной попытки: коридор длины в символах и, понятнее модели, в словах."""
+    floor = length_floor(field, settings)
     if floor <= len(text) < len(before):
         return []
-    return [f"Нужна длина от {floor} до {len(before) - 1} символов, сейчас {len(text)}"]
+    chars, count = shorten_target(before, floor)
+    return [
+        f"Текст должен стать короче: сейчас {len(text)} символов ({words(text)} слов), "
+        f"было {len(before)} ({words(before)} слов). Нужно примерно {chars} символов — "
+        f"около {count} слов, допустимо от {floor} до {len(before) - 1} символов"
+    ]

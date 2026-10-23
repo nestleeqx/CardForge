@@ -92,15 +92,40 @@ def field_prompt(
             # Только переписываемое поле: в остальных может оставаться то, что менеджер
             # убрал из этого (например, бренд в описании, когда его убрали из названия)
             "current": current.model_dump(include={field}),
-            # Модели плохо считают символы: даём длину, от которой сокращать или наращивать
-            **(
-                {"current_length": len(getattr(current, field))}
-                if isinstance(getattr(current, field), str)
-                else {}
-            ),
+            **_length_hint(getattr(current, field), field, comment, settings),
         }
     )
     return system, user
+
+
+def length_floor(field: CardField, settings: GenerationSettings) -> int:
+    """Минимальная длина поля по правилам площадки."""
+    return RULES[settings.marketplace].description_min if field == "description" else 1
+
+
+def words(text: str) -> int:
+    return len(text.split())
+
+
+def shorten_target(before: str, floor: int) -> tuple[int, int]:
+    """Цель для «короче»: примерно на пятую часть короче, но не ниже минимума.
+
+    Возвращает (символы, слова): символы модели считают плохо, слова — заметно лучше.
+    """
+    chars = min(len(before) - 1, max(floor + 40, round(len(before) * 0.8)))
+    return chars, max(1, round(words(before) * chars / len(before)))
+
+
+def _length_hint(
+    value: object, field: CardField, comment: str, settings: GenerationSettings
+) -> dict[str, Any]:
+    if not isinstance(value, str) or not value:
+        return {}
+    hint: dict[str, Any] = {"current_length": f"{len(value)} символов, {words(value)} слов"}
+    if "короч" in comment.lower():
+        chars, count = shorten_target(value, length_floor(field, settings))
+        hint["target_length"] = f"примерно {chars} символов — около {count} слов"
+    return hint
 
 
 def repair_prompt(user: str, violations: list[str]) -> str:
