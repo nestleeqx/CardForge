@@ -123,8 +123,11 @@ docker compose up --build
 ```env
 LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
+OPENAI_MODEL=gpt-5.6-luna
+OPENAI_REASONING_EFFORT=none
 ```
+
+`OPENAI_REASONING_EFFORT` нужен только моделям GPT-5 и o-серии. Если модель не принимает температуру или глубину рассуждений, сервис один раз повторит запрос без этого параметра.
 
 ### Без Docker (для разработки)
 

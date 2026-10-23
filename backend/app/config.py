@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     # json_schema — строгая схема (OpenAI, OpenRouter); json_object — для API без поддержки схем
     openai_json_mode: Literal["json_schema", "json_object"] = "json_schema"
+    # Глубина рассуждений для моделей GPT-5 и o-серии (none, minimal, low, medium, high).
+    # Пусто — не передаём: старые модели этот параметр не знают
+    openai_reasoning_effort: str = ""
 
     yandex_api_key: str = ""
     yandex_folder_id: str = ""

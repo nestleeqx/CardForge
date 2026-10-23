@@ -1,10 +1,13 @@
 import json
+import logging
 
 import httpx
 from pydantic import BaseModel
 
-from app.llm.base import LLMError, LLMProvider, strict_schema
+from app.llm.base import LLMError, LLMProvider, LLMRequestRejected, strict_schema
 from app.llm.http import post_with_retry
+
+log = logging.getLogger(__name__)
 
 
 class OpenAICompatibleProvider(LLMProvider):
@@ -19,13 +22,18 @@ class OpenAICompatibleProvider(LLMProvider):
         model: str,
         json_mode: str = "json_schema",
         temperature: float = 0.4,
+        reasoning_effort: str = "",
         timeout: float = 60.0,
     ):
         if not api_key:
             raise LLMError("Не задан OPENAI_API_KEY")
         self.model = model
         self.json_mode = json_mode
-        self.temperature = temperature
+        # Необязательные параметры: модели серии GPT-5 и o-серии принимают не все из них.
+        # Отклонённый параметр убираем и больше не отправляем.
+        self._optional: dict[str, object] = {"temperature": temperature}
+        if reasoning_effort:
+            self._optional["reasoning_effort"] = reasoning_effort
         self._url = base_url.rstrip("/") + "/chat/completions"
         self._headers = {"Authorization": f"Bearer {api_key}"}
         self._client = httpx.AsyncClient(timeout=timeout)
@@ -47,20 +55,28 @@ class OpenAICompatibleProvider(LLMProvider):
             )
             response_format = {"type": "json_object"}
 
-        data = await post_with_retry(
-            self._client,
-            self._url,
-            headers=self._headers,
-            json={
-                "model": self.model,
-                "temperature": self.temperature,
-                "response_format": response_format,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-            },
-        )
+        payload = {
+            "model": self.model,
+            "response_format": response_format,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        while True:
+            # Копия: параллельный запрос может убрать параметр, пока этот ждёт ответа
+            optional = dict(self._optional)
+            try:
+                data = await post_with_retry(
+                    self._client, self._url, headers=self._headers, json={**payload, **optional}
+                )
+                break
+            except LLMRequestRejected as e:
+                rejected = _rejected_param(e, optional)
+                if rejected is None:
+                    raise
+                log.warning("Модель %s не принимает %s — отправляем без него", self.model, rejected)
+                self._optional.pop(rejected, None)
         try:
             return data["choices"][0]["message"]["content"] or ""
         except (KeyError, IndexError) as e:
@@ -68,3 +84,17 @@ class OpenAICompatibleProvider(LLMProvider):
 
     async def aclose(self) -> None:
         await self._client.aclose()
+
+
+def _rejected_param(error: LLMRequestRejected, sent: dict[str, object]) -> str | None:
+    """Какой из необязательных параметров API отклонил, если дело в нём."""
+    if error.status != 400:
+        return None
+    try:
+        param = json.loads(error.body)["error"].get("param") or ""
+    except (ValueError, KeyError, AttributeError, TypeError):
+        param = ""
+    for name in sent:
+        if name == param or name in error.body:
+            return name
+    return None

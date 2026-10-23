@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 
-from app.llm.base import LLMError
+from app.llm.base import LLMError, LLMRequestRejected
 
 RETRY_STATUSES = {408, 409, 429, 500, 502, 503, 504}
 
@@ -26,7 +26,9 @@ async def post_with_retry(
         else:
             if resp.status_code < 400:
                 return resp.json()
-            if resp.status_code not in RETRY_STATUSES or attempt == attempts:
+            if resp.status_code not in RETRY_STATUSES:
+                raise LLMRequestRejected(resp.status_code, resp.text)
+            if attempt == attempts:
                 raise LLMError(f"Ошибка API нейросети {resp.status_code}: {resp.text[:300]}")
         await asyncio.sleep(delay)
         delay *= 2

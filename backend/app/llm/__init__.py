@@ -12,6 +12,7 @@ def create_provider(settings: Settings) -> LLMProvider:
             model=settings.openai_model,
             json_mode=settings.openai_json_mode,
             temperature=settings.llm_temperature,
+            reasoning_effort=settings.openai_reasoning_effort,
             timeout=settings.llm_timeout,
         )
     if settings.llm_provider == "yandex":

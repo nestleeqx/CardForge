@@ -12,6 +12,15 @@ class LLMError(Exception):
     """Сбой провайдера: сеть, лимиты, неверный ключ."""
 
 
+class LLMRequestRejected(LLMError):
+    """API отклонил запрос (4xx, кроме лимитов): неверный ключ, модель или параметр."""
+
+    def __init__(self, status: int, body: str):
+        super().__init__(f"Ошибка API нейросети {status}: {body[:300]}")
+        self.status = status
+        self.body = body
+
+
 class LLMInvalidResponse(LLMError):
     """Модель ответила, но JSON не прошёл валидацию по схеме."""
 
