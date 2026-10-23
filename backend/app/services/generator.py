@@ -115,6 +115,25 @@ async def generate_card(
     return best, check_card(best, source, settings.marketplace)
 
 
+def _without_removed_brand(
+    source: SourceProduct, current: CardResult, field: CardField, comment: str
+) -> SourceProduct:
+    """Бренд, которого уже нет в поле, модели не показываем.
+
+    Менеджер мог убрать бренд кнопкой «без бренда», а при следующей правке («короче»)
+    модель возвращает его из данных товара — просьбы в промпте не помогают.
+    Проверки фактов по-прежнему сверяют текст с полной строкой таблицы.
+    """
+    brand = source.brand.strip()
+    if not brand or field == "attributes" or "бренд" in comment.lower():
+        return source
+    value = getattr(current, field)
+    text = " ".join(value) if isinstance(value, list) else value
+    if brand.lower() in text.lower():
+        return source
+    return source.model_copy(update={"brand": ""})
+
+
 async def regenerate_field(
     provider: LLMProvider,
     redis: Redis,
@@ -124,7 +143,8 @@ async def regenerate_field(
     field: CardField,
     comment: str,
 ) -> tuple[CardResult, list[Warning_]]:
-    system, user = field_prompt(source, settings, current, field, comment)
+    prompt_source = _without_removed_brand(source, current, field, comment)
+    system, user = field_prompt(prompt_source, settings, current, field, comment)
     draft = await cached_complete(redis, provider, system, user, FIELD_SCHEMAS[field])
     card = _clean(current.model_copy(update={field: getattr(draft, field)}), source)
     return card, check_card(card, source, settings.marketplace)

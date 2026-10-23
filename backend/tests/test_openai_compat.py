@@ -102,3 +102,22 @@ def test_attribute_values_keep_source_spelling():
         ("Вес", "900 г"),
         ("Объём", "600 мл"),
     ]
+
+
+def test_removed_brand_is_hidden_from_rewrite():
+    from app.schemas import SourceProduct
+    from app.services.generator import _without_removed_brand
+
+    source = SourceProduct(name="Скакалка", brand="Jumpy")
+    card = CardResult(
+        title="Скакалка скоростная, 3 м",
+        description="Скакалка Jumpy для тренировок",
+        attributes=[],
+        keywords=["скакалка", "jumpy скакалка"],
+    )
+    # Бренд убран из названия — при «короче» модель его не увидит
+    assert _without_removed_brand(source, card, "title", "короче").brand == ""
+    # …но если о бренде просят, или он ещё есть в поле, — передаём как есть
+    assert _without_removed_brand(source, card, "title", "верни бренд").brand == "Jumpy"
+    assert _without_removed_brand(source, card, "description", "короче").brand == "Jumpy"
+    assert _without_removed_brand(source, card, "keywords", "").brand == "Jumpy"

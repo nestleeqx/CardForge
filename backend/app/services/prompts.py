@@ -88,7 +88,9 @@ def field_prompt(
             "comment": comment or "сделай вариант лучше текущего",
             **settings.model_dump(),
             "product": source.model_dump(),
-            "current": current.model_dump(exclude={"notes"}),
+            # Только переписываемое поле: в остальных может оставаться то, что менеджер
+            # убрал из этого (например, бренд в описании, когда его убрали из названия)
+            "current": {field: getattr(current, field)},
         }
     )
     return system, user
