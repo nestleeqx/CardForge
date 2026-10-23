@@ -58,3 +58,14 @@ async def test_reasoning_effort_is_not_sent_by_default():
     provider, sent = _provider(lambda body: httpx.Response(200, json=OK))
     await provider._complete("system", "user", CardResult)
     assert "reasoning_effort" not in sent[0] and sent[0]["temperature"] == 0.4
+
+
+def test_strict_schema_keeps_fields_named_title():
+    from app.llm.base import strict_schema
+    from app.services.generator import FIELD_SCHEMAS, CardDraft
+
+    schema = strict_schema(CardDraft)
+    assert "title" in schema["properties"] and "title" in schema["required"]
+    assert strict_schema(FIELD_SCHEMAS["title"])["required"] == ["title"]
+    # Служебные заголовки Pydantic при этом убраны
+    assert "title" not in schema and "title" not in schema["properties"]["description"]

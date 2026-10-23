@@ -46,7 +46,13 @@ def strict_schema(schema: type[BaseModel]) -> dict[str, Any]:
 
     def walk(node: Any) -> Any:
         if isinstance(node, dict):
-            node = {k: walk(v) for k, v in node.items() if k not in {"default", "title"}}
+            # Служебные ключи default и title убираем, а поля модели внутри properties —
+            # нет: у карточки есть своё поле title
+            node = {
+                k: ({name: walk(p) for name, p in v.items()} if k == "properties" else walk(v))
+                for k, v in node.items()
+                if k not in {"default", "title"}
+            }
             if node.get("type") == "object" and "properties" in node:
                 node["required"] = list(node["properties"].keys())
                 node["additionalProperties"] = False
