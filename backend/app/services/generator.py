@@ -145,6 +145,20 @@ async def regenerate_field(
 ) -> tuple[CardResult, list[Warning_]]:
     prompt_source = _without_removed_brand(source, current, field, comment)
     system, user = field_prompt(prompt_source, settings, current, field, comment)
-    draft = await cached_complete(redis, provider, system, user, FIELD_SCHEMAS[field])
-    card = _clean(current.model_copy(update={field: getattr(draft, field)}), source)
-    return card, check_card(card, source, settings.marketplace)
+    prompt = user
+    best: CardResult | None = None
+    best_violations: list[str] = []
+    # Как и при генерации карточки: если поле нарушило лимиты (например, «короче» ушло
+    # ниже минимума описания), один раз просим исправить и берём лучший вариант
+    for _ in range(MAX_ATTEMPTS):
+        draft = await cached_complete(redis, provider, system, prompt, FIELD_SCHEMAS[field])
+        card = _clean(current.model_copy(update={field: getattr(draft, field)}), source)
+        violations = hard_violations(card, source, settings.marketplace, field)
+        if best is None or len(violations) < len(best_violations):
+            best, best_violations = card, violations
+        if not violations:
+            break
+        log.info("Поле %s товара %s нарушает правила: %s", field, source.sku, violations)
+        prompt = repair_prompt(user, violations)
+    assert best is not None
+    return best, check_card(best, source, settings.marketplace)

@@ -1,3 +1,4 @@
+import { DESCRIPTION_LIMITS } from "./labels";
 import type { CardField, CardResult, SourceProduct } from "./types";
 
 /** Подсказка показывается, только если её можно выполнить: просить «добавь размер»,
@@ -25,7 +26,9 @@ const RULES: Record<CardField, Rule[]> = {
     { text: "верни бренд", when: (card, source) => !!brand(source) && !has(card.title, brand(source)) },
   ],
   description: [
-    { text: "короче" },
+    // У минимума площадки (500 символов) сокращать уже некуда
+    { text: "короче", when: (card) => card.description.length > DESCRIPTION_LIMITS.min * 1.2 },
+    { text: "подробнее", when: (card) => card.description.length <= DESCRIPTION_LIMITS.min * 1.2 },
     { text: "больше про материал", when: (_, source) => sourceAttr(source, /материал|состав|ткань/i) },
     { text: "больше про уход", when: (_, source) => sourceAttr(source, /уход|стирк|чистк/i) },
     { text: "без воды" },

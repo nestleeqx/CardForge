@@ -242,11 +242,15 @@ def check_card(card: CardResult, source: SourceProduct, marketplace: Marketplace
     return warnings
 
 
-def hard_violations(card: CardResult, source: SourceProduct, marketplace: Marketplace) -> list[str]:
-    """Нарушения, ради которых стоит один раз переспросить модель."""
+HARD_CODES = {"too_long", "too_short", "forbidden_word", "suspected_fabrication", "keywords_count"}
+
+
+def hard_violations(
+    card: CardResult, source: SourceProduct, marketplace: Marketplace, field: str | None = None
+) -> list[str]:
+    """Нарушения, ради которых стоит один раз переспросить модель. field — только по этому полю."""
     return [
         w.message
         for w in check_card(card, source, marketplace)
-        if w.code
-        in {"too_long", "too_short", "forbidden_word", "suspected_fabrication", "keywords_count"}
+        if w.code in HARD_CODES and (field is None or w.field == field)
     ]

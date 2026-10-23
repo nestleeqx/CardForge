@@ -139,3 +139,37 @@ def test_field_prompt_for_every_field():
         assert '"current"' in user, field
     _, user = field_prompt(SourceProduct(name="Коврик"), settings, card, "attributes", "")
     assert "лавандовый" in user
+
+
+async def test_field_rewrite_retries_when_too_short():
+    import fakeredis
+
+    from app.llm.base import LLMProvider
+    from app.schemas import GenerationSettings, SourceProduct
+    from app.services.generator import regenerate_field
+
+    class Scripted(LLMProvider):
+        name, model = "scripted", "test"
+
+        def __init__(self, replies):
+            self.replies, self.prompts = list(replies), []
+
+        async def _complete(self, system, user, schema):
+            self.prompts.append(user)
+            return json.dumps({"description": self.replies.pop(0)})
+
+    # «Короче» сначала ушло ниже минимума описания, после замечания — в пределах
+    provider = Scripted(["Короткий текст. " * 10, "Нормальный текст описания. " * 25])
+    card = CardResult(title="Плед", description="Длинный текст. " * 60, attributes=[], keywords=[])
+    settings = GenerationSettings(marketplace="ozon", tone="selling", length="short")
+    result, _ = await regenerate_field(
+        provider,
+        fakeredis.FakeAsyncRedis(decode_responses=True),
+        SourceProduct(name="Плед"),
+        settings,
+        card,
+        "description",
+        "короче",
+    )
+    assert len(provider.prompts) == 2 and "минимум 500" in provider.prompts[1]
+    assert len(result.description) >= 500
