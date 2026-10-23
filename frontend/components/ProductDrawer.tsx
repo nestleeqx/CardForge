@@ -3,7 +3,8 @@
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Plus, RefreshCw, Save, Sparkles, Undo2, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
-import { CARD_FIELDS, DESCRIPTION_LIMITS, formatBytes, KEYWORDS_LIMITS, MARKETPLACES, QUICK_COMMENTS } from "@/lib/labels";
+import { CARD_FIELDS, DESCRIPTION_LIMITS, formatBytes, KEYWORDS_LIMITS, MARKETPLACES } from "@/lib/labels";
+import { quickComments } from "@/lib/quickComments";
 import type { CardField, CardResult, CardWarning, Marketplace, Product } from "@/lib/types";
 import { Highlight, marksFor, type Mark } from "./Highlight";
 import { MarketplacePreview } from "./MarketplacePreview";
@@ -80,11 +81,11 @@ function EditableText({
 }
 
 function RegeneratePanel({
-  field,
+  suggestions,
   disabled,
   onSubmit,
 }: {
-  field: CardField;
+  suggestions: string[];
   disabled: boolean;
   onSubmit: (comment: string) => Promise<void>;
 }) {
@@ -121,19 +122,21 @@ function RegeneratePanel({
   }
   return (
     <div className="mt-2 w-full rounded-xl border border-accent/30 bg-accent-soft/50 p-3">
-      <div className="flex flex-wrap gap-1.5">
-        {QUICK_COMMENTS[field].map((q) => (
-          <button
-            key={q}
-            disabled={busy}
-            onClick={() => submit(q)}
-            className="rounded-md border border-accent/25 bg-surface px-2 py-0.5 text-xs text-accent-ink hover:bg-accent-soft disabled:opacity-50"
-          >
-            {q}
-          </button>
-        ))}
-      </div>
-      <div className="mt-2 flex gap-2">
+      {suggestions.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {suggestions.map((q) => (
+            <button
+              key={q}
+              disabled={busy}
+              onClick={() => submit(q)}
+              className="rounded-md border border-accent/25 bg-surface px-2 py-0.5 text-xs text-accent-ink hover:bg-accent-soft disabled:opacity-50"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
         <input
           autoFocus
           value={comment}
@@ -299,7 +302,12 @@ export function ProductDrawer({
   const photoNotes = product.warnings.filter((w) => w.code === "photo");
   const attrTerms = marksFor(warnings, "attributes").map((m) => m.term.toLowerCase());
   const regen = (field: CardField) => (
-    <RegeneratePanel field={field} disabled={dirty} onSubmit={(c) => regenerate(field, c)} />
+    <RegeneratePanel
+      // Подсказки по сохранённой карточке: пока есть несохранённые правки, панель неактивна
+      suggestions={product.result ? quickComments(field, product.result, src) : []}
+      disabled={dirty}
+      onSubmit={(c) => regenerate(field, c)}
+    />
   );
 
   return (
@@ -356,7 +364,8 @@ export function ProductDrawer({
               <MarketplacePreview source={src} card={{ ...draft, notes: [] }} marketplace={marketplace} warnings={warnings} />
             </div>
           ) : (
-            <div className="grid lg:min-h-full lg:grid-cols-[minmax(0,5fr)_minmax(0,8fr)]">
+            <div className="grid grid-cols-1 lg:min-h-full lg:grid-cols-[minmax(0,5fr)_minmax(0,8fr)]">
+              {/* grid-cols-1 = minmax(0, 1fr): длинное слово из таблицы не раздвигает колонку шире экрана */}
               <section className="space-y-5 border-b border-line bg-canvas/70 p-5 lg:border-r lg:border-b-0">
                 <h3 className="text-[11px] font-medium tracking-wide text-ink-3 uppercase">Было · строка таблицы</h3>
                 <dl className="space-y-1.5 text-sm">
@@ -407,8 +416,8 @@ export function ProductDrawer({
                     <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface text-sm">
                       {src.attributes.map((a, i) => (
                         <li key={i} className="flex gap-3 px-3 py-1.5">
-                          <span className="w-28 shrink-0 text-ink-3">{a.name}</span>
-                          <span>{a.value}</span>
+                          <span className="w-24 shrink-0 text-ink-3 sm:w-28">{a.name}</span>
+                          <span className="min-w-0 break-words">{a.value}</span>
                         </li>
                       ))}
                     </ul>

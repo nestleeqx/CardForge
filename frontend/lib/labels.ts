@@ -43,13 +43,6 @@ export const CARD_FIELDS: Record<CardField, string> = {
   keywords: "Ключевые слова",
 };
 
-export const QUICK_COMMENTS: Record<CardField, string[]> = {
-  title: ["короче", "добавь размер", "без бренда"],
-  description: ["короче", "больше про материал", "больше про уход", "без воды"],
-  attributes: ["убери дубли", "единицы измерения в одном формате"],
-  keywords: ["больше длинных запросов", "без бренда", "больше подарочных запросов"],
-};
-
 export function plural(n: number, forms: [string, string, string]) {
   const mod10 = n % 10;
   const mod100 = n % 100;
