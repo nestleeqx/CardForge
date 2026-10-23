@@ -7,6 +7,7 @@
 import re
 
 from app.schemas import CardResult, Marketplace, SourceProduct, Warning_
+from app.services.photo_probe import photo_problems
 from app.services.rules import RULES
 
 FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
@@ -136,6 +137,20 @@ def check_source(source: SourceProduct) -> list[Warning_]:
         warnings.append(Warning_(code="missing_data", field="title", message="Не указан бренд"))
     if not source.category:
         warnings.append(Warning_(code="missing_data", message="Не указана категория"))
+    if not source.photo:
+        warnings.append(
+            Warning_(
+                code="photo",
+                message="Нет ссылки на фото — без фото Ozon и Wildberries не примут карточку",
+            )
+        )
+    elif source.photo_error:
+        warnings.append(
+            Warning_(code="photo", message=f"Фото не открылось по ссылке: {source.photo_error}")
+        )
+    elif source.photo_width and source.photo_height:
+        problems = photo_problems(source.photo_width, source.photo_height, source.photo_size)
+        warnings += [Warning_(code="photo", message=p) for p in problems]
     if len(source.attributes) < 3:
         warnings.append(
             Warning_(

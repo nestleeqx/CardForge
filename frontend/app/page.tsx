@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, ChevronDown, FileSpreadsheet, FileUp, PencilLine, Sparkles } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, ChevronDown, FileSpreadsheet, FileUp, PencilLine, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { Highlight } from "@/components/Highlight";
@@ -16,10 +16,10 @@ const STEPS = [
 ];
 
 const CHECKS = [
-  { title: "Лимиты площадки", text: "Название до 60 символов для WB и до 200 для Ozon, описание 500–2000, 10–15 поисковых запросов." },
-  { title: "Запрещённые формулировки", text: "«Лучший», «№1», «хит продаж» и другие оценки, за которые площадки снижают карточку." },
-  { title: "Выдуманные характеристики", text: "Числа и материалы в тексте сверяются с исходной строкой. Всё, чего там не было, подсвечивается." },
-  { title: "Нехватка данных", text: "Нет бренда, мало характеристик — сервис подскажет, что добавить в таблицу, чтобы описание стало точнее." },
+  { title: "Лимиты площадки", text: "Длина названия и описания, число поисковых запросов — по правилам Ozon и WB." },
+  { title: "Запрещённые слова", text: "«Лучший», «№1», «хит продаж» — за такие оценки площадки снижают карточку." },
+  { title: "Выдуманные факты", text: "Числа и материалы, которых нет в вашей таблице, подсвечиваются." },
+  { title: "Фото и данные", text: "Мало характеристик или фото не 3:4 — сервис подскажет, что поправить." },
 ];
 
 const FAQ = [
@@ -81,7 +81,7 @@ function Showcase() {
         <div className="marquee flex w-max gap-4">
           {items.map((p, i) => (
             <div key={`${p.sku}-${i}`} className="flex w-60 shrink-0 items-center gap-3 rounded-2xl border border-line bg-surface p-2.5 pr-4">
-              {/* eslint-disable-next-line @next/next/no-img-element -- декоративное фото с CDN Unsplash */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- декоративное фото товара из демо-партии */}
               <img src={p.photo} alt="" loading="lazy" className="size-14 rounded-xl object-cover" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{p.name}</p>
@@ -207,11 +207,14 @@ export default function Landing() {
                 </p>
                 <ul className="mt-8 grid gap-5 sm:grid-cols-2">
                   {CHECKS.map((c) => (
-                    <li key={c.title}>
-                      <h3 className="flex items-center gap-2 font-medium">
-                        <CheckCircle2 className="size-4 text-accent" /> {c.title}
-                      </h3>
-                      <p className="mt-1 text-sm leading-relaxed text-ink-2">{c.text}</p>
+                    <li key={c.title} className="flex gap-3">
+                      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">
+                        <Check className="size-4" strokeWidth={2.5} />
+                      </span>
+                      <div>
+                        <h3 className="leading-7 font-medium">{c.title}</h3>
+                        <p className="mt-0.5 text-sm leading-relaxed text-ink-2">{c.text}</p>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -287,7 +290,7 @@ export default function Landing() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-ink-3 sm:px-6">
           <Logo />
-          <p>Демо-проект. Магазин «Уютный угол» и бренды вымышлены, фото — Unsplash.</p>
+          <p>Демо-проект. Магазин «Уютный угол» и бренды вымышлены, фото — только для демонстрации.</p>
         </div>
       </footer>
     </div>

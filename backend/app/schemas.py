@@ -23,6 +23,11 @@ class SourceProduct(BaseModel):
     brand: str = ""
     attributes: list[Attribute] = []
     photo: str = ""
+    # Заполняет сервер при обработке строки: размер фото или почему оно не открылось
+    photo_width: int | None = None
+    photo_height: int | None = None
+    photo_size: int | None = None
+    photo_error: str | None = None
 
 
 # --- Ответы нейросети: строгие схемы, по ним валидируется JSON модели ---
@@ -71,6 +76,7 @@ class Warning_(BaseModel):
         "suspected_fabrication",
         "keywords_count",
         "model_note",
+        "photo",
     ]
     field: CardField | None = None
     message: str

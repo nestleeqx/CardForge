@@ -23,13 +23,14 @@ export function MarketplacePreview({
         Упрощённый макет витрины {MARKETPLACES[marketplace].label}. Подсвечено то, что проверки предлагают поправить.
       </p>
       <div className="grid gap-8 md:grid-cols-[300px_minmax(0,1fr)]">
-        {/* Рамка 3:4, как у карточек Ozon и WB; фото вписано целиком, без обрезки */}
+        {/* Рамка 3:4, как у карточек Ozon и WB; фото вписано целиком, без обрезки.
+            Обводка — ring, а не border: border съел бы место, и фото 3:4 не заняло бы рамку целиком */}
         <div className="mx-auto w-full max-w-[260px] md:max-w-none">
           <ProductThumb
             src={source.photo}
             alt={card.title}
             fit="contain"
-            className="aspect-[3/4] w-full rounded-xl border border-line"
+            className="aspect-[3/4] w-full ring-1 ring-line"
           />
         </div>
         <div className="min-w-0">

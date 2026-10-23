@@ -44,6 +44,22 @@ export class ApiError extends Error {
   }
 }
 
+const NETWORK_ERROR = "Не удалось связаться с сервером. Проверьте подключение к интернету и попробуйте ещё раз.";
+const SERVER_ERROR = "Что-то пошло не так. Попробуйте ещё раз через минуту.";
+
+/** Текст ошибки для пользователя: понятные сообщения API показываем как есть,
+ *  технические (коды 5xx, ответы валидации FastAPI) заменяем общими формулировками. */
+async function errorMessage(resp: Response): Promise<string> {
+  let detail: unknown;
+  try {
+    detail = (await resp.json()).detail;
+  } catch {}
+  // 502 — наш ответ «нейросеть не ответила», он уже написан для пользователя
+  if (typeof detail === "string" && (resp.status < 500 || resp.status === 502)) return detail;
+  if (resp.status === 422) return "Проверьте введённые данные и попробуйте ещё раз.";
+  return SERVER_ERROR;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("X-Visitor-Id", visitorId());
@@ -53,27 +69,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   try {
     resp = await fetch(API_URL + path, { ...init, headers });
   } catch {
-    throw new ApiError("Сервер недоступен. Проверьте, что бэкенд запущен.", 0);
+    throw new ApiError(NETWORK_ERROR, 0);
   }
-  if (!resp.ok) {
-    let message = `Ошибка ${resp.status}`;
-    try {
-      const data = await resp.json();
-      if (typeof data.detail === "string") message = data.detail;
-      else if (Array.isArray(data.detail)) message = data.detail.map((d: { msg: string }) => d.msg).join("; ");
-    } catch {}
-    throw new ApiError(message, resp.status);
-  }
+  if (!resp.ok) throw new ApiError(await errorMessage(resp), resp.status);
   if (resp.status === 204) return undefined as T;
   return resp.json();
 }
 
 async function download(path: string, fallbackName: string) {
-  const resp = await fetch(API_URL + path, { headers: { "X-Visitor-Id": visitorId() } });
-  if (!resp.ok) {
-    const data = await resp.json().catch(() => ({}));
-    throw new ApiError(data.detail ?? `Ошибка ${resp.status}`, resp.status);
+  let resp: Response;
+  try {
+    resp = await fetch(API_URL + path, { headers: { "X-Visitor-Id": visitorId() } });
+  } catch {
+    throw new ApiError(NETWORK_ERROR, 0);
   }
+  if (!resp.ok) throw new ApiError(await errorMessage(resp), resp.status);
   const disposition = resp.headers.get("Content-Disposition") ?? "";
   const match = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/.exec(disposition);
   const name = match ? decodeURIComponent(match[1] ?? match[2]) : fallbackName;
@@ -94,6 +104,7 @@ export const api = {
   exportBatch: (id: string) => download(`/api/batches/${id}/export`, "cards.xlsx"),
   downloadSample: () => download("/api/uploads/sample", "uyutny-ugol.csv"),
   resetDemo: () => request<Batch>("/api/demo/reset", { method: "POST" }),
+  restoreDemo: () => request<Batch>("/api/demo/restore", { method: "POST" }),
 
   preview: (file: File) => {
     const form = new FormData();

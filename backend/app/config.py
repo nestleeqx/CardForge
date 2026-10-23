@@ -83,6 +83,8 @@ class Settings(BaseSettings):
     # poll — без фоновых процессов: строки обрабатываются, пока клиент опрашивает партию
     # (serverless, например Vercel). По умолчанию на Vercel — poll, иначе arq.
     queue_mode: Literal["arq", "inline", "poll"] | None = None
+    # Проверять размер фото по ссылке из таблицы (в тестах выключено — без сети)
+    photo_check: bool = True
     worker_concurrency: int = 5
 
     @field_validator("database_url")

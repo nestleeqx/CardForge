@@ -66,3 +66,9 @@ export function formatDate(iso: string) {
     minute: "2-digit",
   });
 }
+
+/** Вес файла: 103 КБ, 2,4 МБ. */
+export function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} МБ`;
+}

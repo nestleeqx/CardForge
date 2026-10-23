@@ -8,7 +8,7 @@ from app.config import get_settings
 from app.deps import IpDep, QueueDep, RedisDep, SessionDep, VisitorDep
 from app.models import Batch, Product
 from app.schemas import BatchCreate, BatchOut, BatchSummary, PreviewOut, ProductOut
-from app.services.demo import DEMO_CSV, delete_batches, ensure_demo
+from app.services.demo import DEMO_CSV, delete_batches, ensure_demo, fill_demo_photo_sizes
 from app.services.export import build_xlsx
 from app.services.parsing import ParseError, build_source, parse_table, suggest_mapping
 from app.services.redis_store import hit_limit
@@ -145,6 +145,9 @@ async def list_batches(session: SessionDep, queue: QueueDep, owner: VisitorDep):
 @router.get("/batches/{batch_id}", response_model=BatchOut)
 async def get_batch(batch_id: str, session: SessionDep, queue: QueueDep, owner: VisitorDep):
     batch = await load_batch(session, batch_id, owner)
+    if fill_demo_photo_sizes(batch):
+        await session.commit()
+        batch = await load_batch(session, batch_id, owner)
     # Без фонового воркера (serverless) каждый опрос партии продвигает очередь на шаг
     if getattr(queue, "polling", False) and any(
         p.status in {"queued", "running"} for p in batch.products

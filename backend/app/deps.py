@@ -24,7 +24,7 @@ def client_ip(request: Request) -> str:
 def visitor_id(x_visitor_id: Annotated[str | None, Header()] = None) -> str:
     """Анонимный id посетителя из localStorage: у каждого своя копия демо и история."""
     if not x_visitor_id or not _VISITOR_RE.match(x_visitor_id):
-        raise HTTPException(400, "Нет заголовка X-Visitor-Id")
+        raise HTTPException(400, "Не удалось определить сессию. Обновите страницу.")
     return x_visitor_id
 
 

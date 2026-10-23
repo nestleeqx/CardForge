@@ -17,6 +17,12 @@ export interface SourceProduct {
   brand: string;
   attributes: Attribute[];
   photo: string;
+  /** Размер фото, если сервер смог его открыть по ссылке */
+  photo_width?: number | null;
+  photo_height?: number | null;
+  /** Вес файла в байтах, если сервер его сообщил */
+  photo_size?: number | null;
+  photo_error?: string | null;
 }
 
 export interface CardResult {
@@ -35,7 +41,8 @@ export interface CardWarning {
     | "forbidden_word"
     | "suspected_fabrication"
     | "keywords_count"
-    | "model_note";
+    | "model_note"
+    | "photo";
   field: CardField | null;
   message: string;
   terms: string[];

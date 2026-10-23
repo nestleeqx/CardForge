@@ -15,6 +15,7 @@ dependencies = [
     "redis>=5.2",
     "arq>=0.26",
     "openpyxl>=3.1.5",
+    "pillow>=11.0",
 ]
 
 # Деплой на Vercel: FastAPI-приложение — переменная app в app/main.py

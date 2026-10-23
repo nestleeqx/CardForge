@@ -8,6 +8,7 @@ import useSWR, { useSWRConfig } from "swr";
 import { api } from "@/lib/api";
 import { plural } from "@/lib/labels";
 import type { BatchSummary } from "@/lib/types";
+import { useConfirm } from "./Confirm";
 import { Logo } from "./Logo";
 import { useToast } from "./Toast";
 
@@ -70,6 +71,7 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
         {!batches && [0, 1, 2].map((i) => <div key={i} className="skeleton mx-2.5 my-2 h-4 rounded" />)}
+        {batches?.length === 0 && <p className="px-2.5 py-1.5 text-[13px] text-ink-3">Пока пусто</p>}
       </div>
     </div>
   );
@@ -94,12 +96,19 @@ function Meter({ label, left, total }: { label: string; left: number; total: num
 function Usage() {
   const router = useRouter();
   const toast = useToast();
+  const confirm = useConfirm();
   const { mutate } = useSWRConfig();
   const { data } = useSWR("limits", api.limits, { refreshInterval: 15000 });
   const [resetting, setResetting] = useState(false);
 
   async function reset() {
-    if (!confirm("Удалить ваши партии и вернуть демо «Уютного угла» в исходное состояние?")) return;
+    const ok = await confirm({
+      title: "Сбросить демо?",
+      description: "Ваши партии удалятся, а демо-партия «Уютного угла» вернётся в исходное состояние.",
+      confirmLabel: "Сбросить",
+      tone: "danger",
+    });
+    if (!ok) return;
     setResetting(true);
     try {
       const batch = await api.resetDemo();

@@ -19,7 +19,7 @@ export const FLOATING = [
   { sku: "UU-004", name: "Кружка керамическая", photo: photo("UU-004", 360) },
   { sku: "UU-013", name: "Доска разделочная", photo: photo("UU-013", 360) },
   { sku: "UU-007", name: "Ваза для цветов", photo: photo("UU-007", 360) },
-  { sku: "UU-020", name: "Зеркало настенное", photo: photo("UU-020", 360) },
+  { sku: "UU-020", name: "Зеркало арочное", photo: photo("UU-020", 360) },
 ];
 
 // Лента товаров под первым экраном
@@ -30,7 +30,7 @@ export const SHOWCASE = [
   { sku: "UU-015", name: "Чайник заварочный", photo: photo("UU-015") },
   { sku: "UU-018", name: "Настольная лампа", photo: photo("UU-018") },
   { sku: "UU-019", name: "Гирлянда", photo: photo("UU-019") },
-  { sku: "UU-020", name: "Зеркало настенное", photo: photo("UU-020") },
+  { sku: "UU-020", name: "Зеркало арочное", photo: photo("UU-020") },
   { sku: "UU-021", name: "Диффузор ароматический", photo: photo("UU-021") },
   { sku: "UU-023", name: "Набор банок для круп", photo: photo("UU-023") },
   { sku: "UU-028", name: "Кашпо для цветов", photo: photo("UU-028") },

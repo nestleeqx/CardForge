@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -19,6 +21,7 @@ from app.services.generator import regenerate_field
 from app.services.redis_store import hit_limit
 
 router = APIRouter(prefix="/api/products", tags=["products"])
+log = logging.getLogger(__name__)
 
 
 async def load_product(session, product_id: str, owner: str) -> Product:
@@ -84,7 +87,11 @@ async def regenerate(
             body.comment.strip(),
         )
     except LLMError as e:
-        raise HTTPException(502, f"Нейросеть не ответила: {e}") from e
+        # Подробности (код ответа API, текст ошибки) — только в лог, пользователю — что делать
+        log.warning("Перегенерация %s/%s не удалась: %s", product_id, body.field, e)
+        raise HTTPException(
+            502, "Нейросеть сейчас не ответила. Попробуйте ещё раз через минуту."
+        ) from e
     product.result = card.model_dump()
     product.warnings = [w.model_dump() for w in warnings]
     product.edited = True

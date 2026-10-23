@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Onest } from "next/font/google";
+import { ConfirmProvider } from "@/components/Confirm";
 import { ToastProvider } from "@/components/Toast";
 import { SITE, SITE_URL } from "@/lib/site";
 import "./globals.css";
@@ -36,7 +37,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ru" className={`${onest.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <ConfirmProvider>{children}</ConfirmProvider>
+        </ToastProvider>
       </body>
     </html>
   );

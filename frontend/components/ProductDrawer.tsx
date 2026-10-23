@@ -1,9 +1,9 @@
 "use client";
 
-import { AlertTriangle, ChevronLeft, ChevronRight, Plus, RefreshCw, Save, Sparkles, Undo2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Plus, RefreshCw, Save, Sparkles, Undo2, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "@/lib/api";
-import { CARD_FIELDS, DESCRIPTION_LIMITS, KEYWORDS_LIMITS, MARKETPLACES, QUICK_COMMENTS } from "@/lib/labels";
+import { CARD_FIELDS, DESCRIPTION_LIMITS, formatBytes, KEYWORDS_LIMITS, MARKETPLACES, QUICK_COMMENTS } from "@/lib/labels";
 import type { CardField, CardResult, CardWarning, Marketplace, Product } from "@/lib/types";
 import { Highlight, marksFor, type Mark } from "./Highlight";
 import { MarketplacePreview } from "./MarketplacePreview";
@@ -32,6 +32,7 @@ const WARNING_STYLE: Record<CardWarning["code"], string> = {
   forbidden_word: "bg-danger-soft text-danger",
   keywords_count: "bg-warn-soft text-warn",
   suspected_fabrication: "bg-warn-soft text-warn",
+  photo: "bg-warn-soft text-warn",
 };
 
 const inputClass =
@@ -295,6 +296,7 @@ export function ProductDrawer({
   // Для подсветки берём сохранённые предупреждения, пока текст не изменён вручную
   const warnings = dirty ? product.warnings.filter((w) => !w.terms?.length) : product.warnings;
   const sourceNotes = product.warnings.filter((w) => w.code === "missing_data" || w.code === "model_note");
+  const photoNotes = product.warnings.filter((w) => w.code === "photo");
   const attrTerms = marksFor(warnings, "attributes").map((m) => m.term.toLowerCase());
   const regen = (field: CardField) => (
     <RegeneratePanel field={field} disabled={dirty} onSubmit={(c) => regenerate(field, c)} />
@@ -371,6 +373,34 @@ export function ProductDrawer({
                     </div>
                   ))}
                 </dl>
+                {/* Без фото блок тоже показываем: вместо снимка заглушка и замечание */}
+                {(src.photo || photoNotes.length > 0) && (
+                  <div>
+                    <h4 className="mb-2 text-xs text-ink-3">Фото</h4>
+                    <div className="flex items-start gap-3">
+                      <ProductThumb src={src.photo} alt={src.name} fit="contain" className="h-20 w-15 ring-1 ring-line" />
+                      <div className="min-w-0 space-y-1.5 text-sm">
+                        {/* Размер появляется после обработки строки; для демо он измерен заранее */}
+                        {src.photo_width && src.photo_height && (
+                          <p className="tabular-nums">
+                            {src.photo_width}×{src.photo_height}
+                            {src.photo_size ? <span className="text-ink-3"> · {formatBytes(src.photo_size)}</span> : null}
+                          </p>
+                        )}
+                        {src.photo_width && photoNotes.length === 0 && (
+                          <p className="flex items-center gap-1.5 text-xs text-accent">
+                            <CheckCircle2 className="size-3.5" /> подходит для Ozon и WB
+                          </p>
+                        )}
+                        {photoNotes.map((w, i) => (
+                          <p key={i} className="rounded-md bg-warn-soft px-2.5 py-1.5 text-xs text-warn">
+                            {w.message}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <h4 className="mb-2 text-xs text-ink-3">Характеристики · {src.attributes.length}</h4>
                   {src.attributes.length ? (

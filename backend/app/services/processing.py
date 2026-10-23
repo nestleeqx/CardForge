@@ -9,15 +9,31 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import selectinload
 
-from app.llm import LLMError, LLMProvider
+from app.config import get_settings
+from app.llm import LLMError, LLMInvalidResponse, LLMProvider
 from app.models import Product
 from app.schemas import GenerationSettings, SourceProduct
 from app.services.generator import generate_card
+from app.services.photo_probe import PhotoProbeError, probe_photo
 
 log = logging.getLogger(__name__)
 
 # Строка «в работе» дольше этого срока считается брошенной (упал воркер или функция)
 STALE_AFTER = timedelta(minutes=2)
+
+
+async def _measure_photo(source: SourceProduct) -> SourceProduct:
+    """Узнаёт размер фото, чтобы проверки могли сверить его с форматом 3:4."""
+    try:
+        info = await probe_photo(source.photo)
+    except PhotoProbeError as e:
+        return source.model_copy(update={"photo_error": str(e)})
+    except Exception:
+        log.exception("Не удалось проверить фото %s", source.photo)
+        return source
+    return source.model_copy(
+        update={"photo_width": info.width, "photo_height": info.height, "photo_size": info.size}
+    )
 
 
 async def _generate(
@@ -34,16 +50,25 @@ async def _generate(
         settings = GenerationSettings(
             marketplace=batch.marketplace, tone=batch.tone, length=batch.length
         )
+        source = SourceProduct.model_validate(product.source)
+        if source.photo and source.photo_width is None and get_settings().photo_check:
+            source = await _measure_photo(source)
+            product.source = source.model_dump()
         try:
-            card, warnings = await generate_card(
-                provider, redis, SourceProduct.model_validate(product.source), settings
-            )
+            card, warnings = await generate_card(provider, redis, source, settings)
         except LLMError as e:
+            # Текст ошибки видит пользователь в таблице — без кодов и ответов API, они в логе
             log.warning("Строка %s: %s", product_id, e)
-            product.status, product.error = "error", str(e)[:500]
+            product.status = "error"
+            product.error = (
+                "Нейросеть ответила не по формату. Нажмите «Повторить генерацию»."
+                if isinstance(e, LLMInvalidResponse)
+                else "Нейросеть не ответила. Нажмите «Повторить генерацию»."
+            )
         except Exception:
             log.exception("Строка %s упала", product_id)
-            product.status, product.error = "error", "Внутренняя ошибка при генерации"
+            product.status = "error"
+            product.error = "Не удалось сгенерировать карточку. Нажмите «Повторить генерацию»."
         else:
             product.status = "done"
             product.result = card.model_dump()

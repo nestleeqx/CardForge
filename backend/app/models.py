@@ -59,3 +59,16 @@ class Product(Base):
     )
 
     batch: Mapped[Batch] = relationship(back_populates="products")
+
+
+class Visitor(Base):
+    """Анонимный посетитель: запись появляется при первом визите, вместе с демо-партией.
+
+    Нужна, чтобы отличать первый визит от «удалил все партии» — во втором случае
+    демо само не возвращается.
+    """
+
+    __tablename__ = "visitors"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

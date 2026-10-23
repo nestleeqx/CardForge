@@ -33,6 +33,31 @@ async def test_demo_batch_is_ready_on_first_visit(client):
     assert batch["counts"]["done"] == 30
 
 
+async def test_demo_photos_are_measured_in_advance(client):
+    [demo] = (await client.get("/api/batches")).json()
+    batch = (await client.get(f"/api/batches/{demo['id']}")).json()
+    for p in batch["products"]:
+        assert p["source"]["photo_width"] and p["source"]["photo_height"], p["source"]["sku"]
+        # Все фото демо подходят площадкам — замечаний к ним нет
+        assert not [w for w in p["warnings"] if w["code"] == "photo"], p["source"]["sku"]
+
+
+async def test_old_demo_gets_photo_sizes_on_open(client):
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import Product
+
+    [demo] = (await client.get("/api/batches")).json()
+    # Демо, созданное до того, как размеры фото стали хранить
+    async with SessionLocal() as session:
+        for product in await session.scalars(select(Product).where(Product.batch_id == demo["id"])):
+            product.source = {**product.source, "photo_width": None, "photo_height": None}
+        await session.commit()
+    batch = (await client.get(f"/api/batches/{demo['id']}")).json()
+    assert all(p["source"]["photo_width"] for p in batch["products"])
+
+
 async def test_visitors_do_not_see_each_other(client):
     await client.get("/api/batches")
     other = await client.get("/api/batches", headers={"X-Visitor-Id": "someone-else-02"})
@@ -128,3 +153,61 @@ async def test_demo_reset_restores_original(client):
     await drain()
     batches = (await client.get("/api/batches")).json()
     assert len(batches) == 1 and batches[0]["id"] != demo["id"]
+
+
+async def test_demo_is_not_recreated_after_deleting_everything(client):
+    [demo] = (await client.get("/api/batches")).json()
+    assert (await client.delete(f"/api/batches/{demo['id']}")).status_code == 204
+    # Повторный визит: посетитель уже известен, демо само не возвращается
+    assert (await client.get("/api/batches")).json() == []
+    # …но возвращается кнопкой «Сбросить демо»
+    resp = await client.post("/api/demo/reset")
+    assert resp.status_code == 200 and resp.json()["is_demo"]
+    assert len((await client.get("/api/batches")).json()) == 1
+
+
+async def test_existing_visitor_without_record_gets_no_duplicate_demo(client):
+    """Посетители, пришедшие до появления таблицы visitors, не получают второе демо."""
+    from app.db import SessionLocal
+    from app.models import Visitor
+
+    await client.get("/api/batches")
+    async with SessionLocal() as s:
+        await s.delete(await s.get(Visitor, "test-visitor-0001"))
+        await s.commit()
+    assert len((await client.get("/api/batches")).json()) == 1
+
+
+async def test_cleanup_forgets_old_visitors(client):
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import update
+
+    from app.db import SessionLocal
+    from app.models import Batch, Visitor
+    from app.services.demo import cleanup_old
+
+    [demo] = (await client.get("/api/batches")).json()
+    old = datetime.now(UTC) - timedelta(days=2)
+    async with SessionLocal() as s:
+        await s.execute(update(Batch).values(created_at=old))
+        await s.execute(update(Visitor).values(created_at=old))
+        await s.commit()
+        assert await cleanup_old(s, ttl_hours=24) == 1
+    # На следующий день посетитель снова видит свежую демо-партию
+    [fresh] = (await client.get("/api/batches")).json()
+    assert fresh["is_demo"] and fresh["id"] != demo["id"]
+
+
+async def test_restore_demo_keeps_other_batches(client):
+    [demo] = (await client.get("/api/batches")).json()
+    preview = (await _upload(client, "Артикул,Название\nA1,Кружка\n".encode())).json()
+    own = (await _create(client, preview)).json()
+    await client.delete(f"/api/batches/{demo['id']}")
+
+    restored = (await client.post("/api/demo/restore")).json()
+    assert restored["is_demo"]
+    ids = {b["id"] for b in (await client.get("/api/batches")).json()}
+    assert ids == {own["id"], restored["id"]}
+    # Повторный вызов не плодит демо
+    assert (await client.post("/api/demo/restore")).json()["id"] == restored["id"]

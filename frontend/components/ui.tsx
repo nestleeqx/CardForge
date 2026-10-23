@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { STATUSES } from "@/lib/labels";
 import type { ProductStatus } from "@/lib/types";
 
@@ -8,6 +8,7 @@ const VARIANTS = {
   secondary: "border border-line bg-surface text-ink hover:bg-sunken",
   ghost: "text-ink-2 hover:bg-sunken hover:text-ink",
   danger: "border border-line bg-surface text-danger hover:bg-danger-soft",
+  destructive: "bg-danger text-white hover:bg-danger/90 shadow-[0_1px_0_rgba(0,0,0,.08)]",
 };
 
 export function buttonClasses(variant: keyof typeof VARIANTS = "secondary", size: "sm" | "md" = "md") {
@@ -16,7 +17,7 @@ export function buttonClasses(variant: keyof typeof VARIANTS = "secondary", size
   } ${VARIANTS[variant]}`;
 }
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = ComponentProps<"button"> & {
   variant?: keyof typeof VARIANTS;
   size?: "sm" | "md";
   loading?: boolean;

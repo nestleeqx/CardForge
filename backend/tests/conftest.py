@@ -8,6 +8,7 @@ os.environ.update(
     QUEUE_MODE="inline",
     LLM_PROVIDER="mock",
     MOCK_DELAY="0",
+    PHOTO_CHECK="0",
     BATCHES_PER_HOUR="3",
     GENERATIONS_PER_HOUR="20",
 )

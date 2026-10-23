@@ -4,7 +4,7 @@ from app.api.batches import batch_out, load_batch
 from app.config import get_settings
 from app.deps import IpDep, ProviderDep, QueueDep, RedisDep, SessionDep, VisitorDep
 from app.schemas import BatchOut, LimitsOut
-from app.services.demo import cleanup_old, reset_demo
+from app.services.demo import cleanup_old, reset_demo, restore_demo
 from app.services.redis_store import hit_limit, remaining
 
 router = APIRouter(prefix="/api", tags=["misc"])
@@ -46,6 +46,18 @@ async def demo_reset(
     """Удаляет партии посетителя и заново создаёт демо-партию «Уютного угла»."""
     await hit_limit(redis, "reset", ip, get_settings().demo_resets_per_hour)
     batch, pending = await reset_demo(session, owner)
+    if pending:
+        await queue.enqueue(pending)
+    return batch_out(await load_batch(session, batch.id, owner))
+
+
+@router.post("/demo/restore", response_model=BatchOut)
+async def demo_restore(
+    session: SessionDep, redis: RedisDep, queue: QueueDep, ip: IpDep, owner: VisitorDep
+):
+    """Возвращает демо-партию, если посетитель её удалил. Другие партии не трогает."""
+    await hit_limit(redis, "reset", ip, get_settings().demo_resets_per_hour)
+    batch, pending = await restore_demo(session, owner)
     if pending:
         await queue.enqueue(pending)
     return batch_out(await load_batch(session, batch.id, owner))

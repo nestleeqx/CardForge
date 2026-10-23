@@ -52,12 +52,12 @@ function FloatingProducts() {
       {FLOATING.map((p, i) => (
         <div key={p.sku} className={`absolute ${places[i].cls}`} style={parallax(places[i].depth)}>
           <figure
-            className="float-card polaroid pointer-events-auto w-40"
+            className="float-card polaroid pointer-events-auto w-36"
             style={{ "--r": places[i].r, animationDelay: `${i * -1700}ms` } as CSSProperties}
           >
             <div className="polaroid-inner rounded-2xl bg-surface p-2 shadow-[0_18px_40px_-18px_rgba(23,25,28,.35)]">
-              {/* eslint-disable-next-line @next/next/no-img-element -- декоративное фото с CDN */}
-              <img src={p.photo} alt="" draggable={false} className="aspect-square w-full rounded-xl object-cover" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- декоративное фото товара */}
+              <img src={p.photo} alt="" draggable={false} className="aspect-[3/4] w-full rounded-xl object-cover" />
               <figcaption className="mt-2 flex items-center justify-between px-1 pb-0.5 text-[10px]">
                 <span className="text-ink-3">{p.sku}</span>
                 <span className="inline-flex items-center gap-1 font-medium text-accent">
@@ -78,24 +78,24 @@ function GeneratingCard({ index, stage }: { index: number; stage: Stage }) {
   const typing = stage.typed < p.title.length;
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_40px_80px_-40px_rgba(23,25,28,.45)]">
-      <div className="flex items-center justify-between border-b border-line px-5 py-3">
-        <div>
-          <p className="text-[10px] font-medium tracking-wider text-ink-3 uppercase">Карточка для Ozon</p>
+      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+        <div className="min-w-0">
+          <p className="text-[10px] font-medium tracking-wider whitespace-nowrap text-ink-3 uppercase">Карточка для Ozon</p>
           <p className="text-xs">{p.sku}</p>
         </div>
         {stage.ready ? (
-          <span key="ready" className="pop inline-flex items-center gap-1.5 rounded-full bg-lime px-2.5 py-1 text-xs font-medium text-accent-ink">
-            <Check className="size-3.5" /> Готово к выгрузке
+          <span key="ready" className="pop inline-flex shrink-0 items-center gap-1.5 rounded-full bg-lime px-2.5 py-1 text-xs font-medium text-accent-ink">
+            <Check className="size-3.5" /> Готово<span className="-ml-0.5 hidden sm:inline">к выгрузке</span>
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-info-soft px-2.5 py-1 text-xs font-medium text-info">
-            <Loader2 className="size-3.5 animate-spin" /> ИИ пишет карточку
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-info-soft px-2.5 py-1 text-xs font-medium text-info">
+            <Loader2 className="size-3.5 animate-spin" /> ИИ пишет<span className="-ml-0.5 hidden sm:inline">карточку</span>
           </span>
         )}
       </div>
 
       <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-4 p-4 sm:grid-cols-[180px_minmax(0,1fr)] sm:gap-5 sm:p-5">
-        <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-sunken">
+        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-sunken">
           {/* eslint-disable-next-line @next/next/no-img-element -- фото товара с CDN */}
           <img
             key={p.sku}
@@ -125,7 +125,7 @@ function GeneratingCard({ index, stage }: { index: number; stage: Stage }) {
                 <div key={`${p.sku}-${k}`} className="slide-in flex items-baseline gap-2">
                   <dt className="min-w-0 truncate text-ink-3">{k}</dt>
                   <span className="min-w-3 flex-1 border-b border-dotted border-line-strong" />
-                  <dd className="shrink-0 text-right text-ink-2">{v}</dd>
+                  <dd className="min-w-0 truncate text-right text-ink-2">{v}</dd>
                 </div>
               ) : (
                 <div key={`${p.sku}-${k}`} className="skeleton h-3.5 rounded" style={{ width: `${70 + ((i * 13) % 30)}%` }} />
@@ -233,8 +233,9 @@ export function HeroStage({ children }: { children: ReactNode }) {
       {children}
 
       <div className="relative px-4">
-        {/* На телефоне макет обрезается по высоте и уходит в градиент, а не наезжает на следующий блок */}
-        <div className="relative mx-auto mt-12 h-[440px] max-w-5xl overflow-hidden sm:mt-16 sm:h-[540px] sm:overflow-visible">
+        {/* Макет обрезается по высоте и уходит в градиент, а не наезжает на следующий блок.
+            На широких экранах режем только по вертикали, чтобы не срезать тени и боковые карточки */}
+        <div className="relative mx-auto mt-12 h-[440px] max-w-5xl overflow-hidden sm:mt-16 sm:h-[540px] sm:overflow-x-visible sm:overflow-y-clip">
           <div className="absolute top-14 left-0 hidden w-[430px] md:block" style={parallax(14)}>
             <div className="-rotate-6 rounded-xl border border-line bg-surface shadow-[0_20px_40px_-24px_rgba(23,25,28,.3)]">
               <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2.5 text-xs text-ink-2">
