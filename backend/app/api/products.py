@@ -17,7 +17,7 @@ from app.schemas import (
     SourceProduct,
 )
 from app.services.checks import check_card
-from app.services.generator import regenerate_field
+from app.services.generator import NotShorter, regenerate_field
 from app.services.redis_store import hit_limit
 
 router = APIRouter(prefix="/api/products", tags=["products"])
@@ -86,6 +86,11 @@ async def regenerate(
             body.field,
             body.comment.strip(),
         )
+    except NotShorter as e:
+        # Текущий вариант не трогаем и честно говорим почему
+        raise HTTPException(
+            422, f"Короче не получится: {e} уже у минимальной длины площадки."
+        ) from e
     except LLMError as e:
         # Подробности (код ответа API, текст ошибки) — только в лог, пользователю — что делать
         log.warning("Перегенерация %s/%s не удалась: %s", product_id, body.field, e)

@@ -173,3 +173,39 @@ async def test_field_rewrite_retries_when_too_short():
     )
     assert len(provider.prompts) == 2 and "минимум 500" in provider.prompts[1]
     assert len(result.description) >= 500
+
+
+async def test_shorter_never_returns_longer_text():
+    import fakeredis
+
+    from app.llm.base import LLMProvider
+    from app.schemas import GenerationSettings, SourceProduct
+    from app.services.generator import NotShorter, regenerate_field
+
+    class Scripted(LLMProvider):
+        name, model = "scripted", "test"
+
+        def __init__(self, replies):
+            self.replies, self.prompts = list(replies), []
+
+        async def _complete(self, system, user, schema):
+            self.prompts.append(user)
+            return json.dumps({"description": self.replies.pop(0)})
+
+    # Описание уже у минимума: модель ушла ниже 500, а исправляя — длиннее исходного
+    current = "Текст описания. " * 33  # 528 символов
+    provider = Scripted(["Коротко. " * 20, "Длинный ответ. " * 50])
+    card = CardResult(title="Плед", description=current, attributes=[], keywords=[])
+    settings = GenerationSettings(marketplace="ozon", tone="selling", length="short")
+    with pytest.raises(NotShorter):
+        await regenerate_field(
+            provider,
+            fakeredis.FakeAsyncRedis(decode_responses=True),
+            SourceProduct(name="Плед"),
+            settings,
+            card,
+            "description",
+            "короче",
+        )
+    # Во второй попытке модель получила точный коридор длины
+    assert f"от 500 до {len(current) - 1}" in provider.prompts[1]

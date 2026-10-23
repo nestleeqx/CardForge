@@ -20,8 +20,9 @@ from app.schemas import (
     Warning_,
 )
 from app.services.checks import check_card, hard_violations
-from app.services.prompts import card_prompt, field_prompt, repair_prompt
+from app.services.prompts import FIELD_LABELS, card_prompt, field_prompt, repair_prompt
 from app.services.redis_store import cached_complete
+from app.services.rules import RULES
 
 log = logging.getLogger(__name__)
 
@@ -146,6 +147,10 @@ async def regenerate_field(
     prompt_source = _without_removed_brand(source, current, field, comment)
     system, user = field_prompt(prompt_source, settings, current, field, comment)
     prompt = user
+    before = getattr(current, field)
+    # «Короче» обязано сокращать: модель, исправляя слишком короткий вариант, легко
+    # проскакивает обратно выше исходной длины
+    shorter = isinstance(before, str) and "короч" in comment.lower()
     best: CardResult | None = None
     best_violations: list[str] = []
     # Как и при генерации карточки: если поле нарушило лимиты (например, «короче» ушло
@@ -154,6 +159,8 @@ async def regenerate_field(
         draft = await cached_complete(redis, provider, system, prompt, FIELD_SCHEMAS[field])
         card = _clean(current.model_copy(update={field: getattr(draft, field)}), source)
         violations = hard_violations(card, source, settings.marketplace, field)
+        if shorter:
+            violations += _not_shorter(getattr(card, field), before, field, settings)
         if best is None or len(violations) < len(best_violations):
             best, best_violations = card, violations
         if not violations:
@@ -161,4 +168,20 @@ async def regenerate_field(
         log.info("Поле %s товара %s нарушает правила: %s", field, source.sku, violations)
         prompt = repair_prompt(user, violations)
     assert best is not None
+    if shorter and len(getattr(best, field)) >= len(before):
+        raise NotShorter(FIELD_LABELS[field])
     return best, check_card(best, source, settings.marketplace)
+
+
+class NotShorter(Exception):
+    """Сократить поле, не нарушив минимум длины, не получилось — текущий вариант оставляем."""
+
+
+def _not_shorter(
+    text: str, before: str, field: CardField, settings: GenerationSettings
+) -> list[str]:
+    """Замечание для повторной попытки, с точным коридором длины."""
+    floor = RULES[settings.marketplace].description_min if field == "description" else 1
+    if floor <= len(text) < len(before):
+        return []
+    return [f"Нужна длина от {floor} до {len(before) - 1} символов, сейчас {len(text)}"]
