@@ -90,7 +90,7 @@ def field_prompt(
             "product": source.model_dump(),
             # Только переписываемое поле: в остальных может оставаться то, что менеджер
             # убрал из этого (например, бренд в описании, когда его убрали из названия)
-            "current": {field: getattr(current, field)},
+            "current": current.model_dump(include={field}),
         }
     )
     return system, user

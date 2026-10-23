@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api import batches, misc, products
 from app.config import get_settings
@@ -13,6 +14,7 @@ from app.services.processing import ArqQueue, InlineQueue, PollQueue
 from app.services.redis_store import RateLimitExceeded, get_redis
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger(__name__)
 
 LIMIT_MESSAGES = {
     "batch": "Лимит демо: {limit} партии в час",
@@ -45,6 +47,26 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="CardForge API", version="0.1.0", lifespan=lifespan)
+
+
+async def catch_unhandled(request: Request, call_next):
+    """Непойманная ошибка → понятный JSON 500.
+
+    Без этого ответ 500 уходит мимо CORS, браузер его блокирует, и пользователь видит
+    «не удалось связаться с сервером» вместо сообщения об ошибке. Подключено до CORS,
+    поэтому оказывается внутри него и ответ получает CORS-заголовки.
+    """
+    try:
+        return await call_next(request)
+    except Exception:
+        log.exception("Необработанная ошибка: %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Что-то пошло не так. Попробуйте ещё раз через минуту."},
+        )
+
+
+app.add_middleware(BaseHTTPMiddleware, dispatch=catch_unhandled)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_origin_list,

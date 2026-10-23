@@ -121,3 +121,21 @@ def test_removed_brand_is_hidden_from_rewrite():
     assert _without_removed_brand(source, card, "title", "верни бренд").brand == "Jumpy"
     assert _without_removed_brand(source, card, "description", "короче").brand == "Jumpy"
     assert _without_removed_brand(source, card, "keywords", "").brand == "Jumpy"
+
+
+def test_field_prompt_for_every_field():
+    from app.schemas import Attribute, GenerationSettings, SourceProduct
+    from app.services.prompts import field_prompt
+
+    card = CardResult(
+        title="Коврик",
+        description="Текст",
+        attributes=[Attribute(name="Цвет", value="лавандовый")],
+        keywords=["коврик"],
+    )
+    settings = GenerationSettings(marketplace="ozon", tone="selling", length="short")
+    for field in ("title", "description", "attributes", "keywords"):
+        _, user = field_prompt(SourceProduct(name="Коврик"), settings, card, field, "")
+        assert '"current"' in user, field
+    _, user = field_prompt(SourceProduct(name="Коврик"), settings, card, "attributes", "")
+    assert "лавандовый" in user

@@ -97,6 +97,12 @@ async def test_full_flow_upload_generate_edit_export(client):
     )
     assert resp.status_code == 200
     assert len(resp.json()["result"]["title"]) <= 60
+    # Каждое поле переписывается без ошибок: характеристики — список, а не строка
+    for field in ("description", "attributes", "keywords"):
+        resp = await client.post(
+            f"/api/products/{product['id']}/regenerate", json={"field": field, "comment": ""}
+        )
+        assert resp.status_code == 200, field
 
     resp = await client.get(f"/api/batches/{batch['id']}/export")
     assert resp.status_code == 200
@@ -211,3 +217,24 @@ async def test_restore_demo_keeps_other_batches(client):
     assert ids == {own["id"], restored["id"]}
     # Повторный вызов не плодит демо
     assert (await client.post("/api/demo/restore")).json()["id"] == restored["id"]
+
+
+async def test_unhandled_error_is_json_with_cors(client, monkeypatch):
+    from app.api import products
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("сбой")
+
+    # Падение внутри обработчика, которого не ждали
+    monkeypatch.setattr(products, "regenerate_field", boom)
+    [demo] = (await client.get("/api/batches")).json()
+    batch = (await client.get(f"/api/batches/{demo['id']}")).json()
+    resp = await client.post(
+        f"/api/products/{batch['products'][0]['id']}/regenerate",
+        json={"field": "title", "comment": ""},
+        headers={"Origin": "http://localhost:3000"},
+    )
+    assert resp.status_code == 500
+    assert resp.json()["detail"].startswith("Что-то пошло не так")
+    # Браузер увидит ответ, а не «нет связи»
+    assert resp.headers["access-control-allow-origin"] == "http://localhost:3000"
